@@ -13,18 +13,18 @@
     },
     "autoload": {
         "psr-4": {
-            "Shirahcan\VideoClient\\": "src/"
+            "Shirahcan\\VideoClient\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Shirahcan\VideoClient\Tests\\": "tests/"
+            "Shirahcan\\VideoClient\\Tests\\": "tests/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "Shirahcan\VideoClient\VideoClientServiceProvider"
+                "Shirahcan\\VideoClient\\VideoClientServiceProvider"
             ]
         }
     },
