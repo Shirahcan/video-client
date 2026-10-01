@@ -111,6 +111,17 @@ class FakeVideoClient implements VideoClient
         return new VideoToken($token, "https://{$room->domain}.daily.co/{$roomName}?t={$token}", ($expiresAt ?? new \DateTimeImmutable('+2 hours'))->format(DATE_ATOM));
     }
 
+    public function state(string $roomName): VideoCallState
+    {
+        $this->record('state', compact('roomName'));
+        $room = $this->rooms[$roomName] ?? throw new RoomNotFound('No such room for this product.', 'room_not_found', 404);
+
+        return new VideoCallState(
+            $room->status === 'deleted' ? 'cancelled' : 'open',
+            null, $room->startsAt, $room->endsAt, $room->expiresAt, date(DATE_ATOM), false,
+        );
+    }
+
     public function transcripts(string $roomName): array
     {
         $this->record('transcripts', compact('roomName'));

@@ -51,12 +51,16 @@ class ClientTest extends TestCase
         $this->assertStringNotContainsString('daily', strtolower((string) $request->getBody()));
     }
 
-    public function test_the_token_carries_the_url(): void
+    public function test_the_token_carries_the_url_and_the_call_state(): void
     {
-        $token = $this->client($this->json(201, ['data' => ['token' => 'T', 'url' => 'https://shirah.daily.co/r?t=T', 'expires_at' => 'x']]))
-            ->token('r', 'u-1', 'Maria', false);
+        $token = $this->client($this->json(201, ['data' => [
+            'token' => 'T', 'url' => 'https://shirah.daily.co/r?t=T', 'expires_at' => 'x',
+            'call' => ['state' => 'grace', 'closes_at' => '2026-11-02T16:00:00+00:00', 'server_time' => '2026-11-02T15:40:00+00:00'],
+        ]]))->token('r', 'u-1', 'Maria', false);
 
         $this->assertSame('https://shirah.daily.co/r?t=T', $token->url);
+        $this->assertTrue($token->call?->isJoinable());
+        $this->assertSame('2026-11-02T16:00:00+00:00', $token->call->closesAt);
     }
 
     /** One exception per remedy. */

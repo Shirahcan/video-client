@@ -35,6 +35,9 @@ interface VideoClient
     /** The ONLY way to get a joinable URL: always carries its token. */
     public function token(string $roomName, ?string $participantId, string $displayName, bool $isOwner, ?\DateTimeInterface $expiresAt = null, bool $autoStartTranscription = false, bool $hidden = false): VideoToken;
 
+    /** The call-state contract (V16). No Daily call behind it: safe to poll. */
+    public function state(string $roomName): VideoCallState;
+
     /** @return array<int, VideoTranscript> */
     public function transcripts(string $roomName): array;
 

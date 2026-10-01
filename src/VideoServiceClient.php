@@ -108,6 +108,11 @@ class VideoServiceClient implements VideoClient
         ], fn ($v) => $v !== null)));
     }
 
+    public function state(string $roomName): VideoCallState
+    {
+        return VideoCallState::fromArray($this->send('GET', 'api/v1/rooms/'.rawurlencode($roomName).'/state'));
+    }
+
     public function transcripts(string $roomName): array
     {
         $data = $this->send('GET', 'api/v1/rooms/'.rawurlencode($roomName).'/transcripts');
