@@ -1,0 +1,202 @@
+<?php
+
+namespace Shirahcan\VideoClient;
+
+use GuzzleHttp\Client as Guzzle;
+use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Exception\GuzzleException;
+use Psr\Http\Message\ResponseInterface;
+use Shirahcan\VideoClient\Exceptions\RoomNotFound;
+use Shirahcan\VideoClient\Exceptions\RoomStranded;
+use Shirahcan\VideoClient\Exceptions\VideoOverBudget;
+use Shirahcan\VideoClient\Exceptions\VideoRequestRejected;
+use Shirahcan\VideoClient\Exceptions\VideoServiceException;
+use Shirahcan\VideoClient\Exceptions\VideoServiceUnavailable;
+
+/**
+ * Talks to video-service over loopback.
+ *
+ * ⚠ IT HOLDS NO DAILY KEY, AND MUST NEVER LEARN HOW TO. A client that carried its own
+ * key "as a fallback" would recreate the three separate Daily integrations this
+ * programme exists to end. If the service is unreachable, that is an outage to report
+ * ({@see VideoServiceUnavailable}), not a reason to route around it.
+ */
+class VideoServiceClient implements VideoClient
+{
+    public function __construct(
+        private string $baseUrl,
+        private string $trustKey,
+        private int $timeout = 15,
+        private ?Guzzle $http = null,
+    ) {
+        $this->http ??= new Guzzle(['base_uri' => rtrim($this->baseUrl, '/').'/', 'timeout' => $this->timeout]);
+    }
+
+    public function createRoom(string $externalRef, \DateTimeInterface $startsAt, \DateTimeInterface $endsAt, array $options = []): VideoRoom
+    {
+        return VideoRoom::fromArray($this->send('POST', 'api/v1/rooms', array_filter([
+            'external_ref' => $externalRef,
+            'starts_at' => $startsAt->format(DATE_ATOM),
+            'ends_at' => $endsAt->format(DATE_ATOM),
+            'max_participants' => $options['max_participants'] ?? null,
+            'transcription' => $options['transcription'] ?? null,
+            'knocking' => $options['knocking'] ?? null,
+        ], fn ($v) => $v !== null)));
+    }
+
+    public function room(string $name): VideoRoom
+    {
+        return VideoRoom::fromArray($this->send('GET', 'api/v1/rooms/'.rawurlencode($name)));
+    }
+
+    public function rescheduleRoom(string $name, \DateTimeInterface $startsAt, \DateTimeInterface $endsAt): VideoRoom
+    {
+        return VideoRoom::fromArray($this->send('PATCH', 'api/v1/rooms/'.rawurlencode($name), [
+            'starts_at' => $startsAt->format(DATE_ATOM),
+            'ends_at' => $endsAt->format(DATE_ATOM),
+        ]));
+    }
+
+    public function setExpiry(string $name, \DateTimeInterface $expiresAt): VideoRoom
+    {
+        return VideoRoom::fromArray($this->send('PATCH', 'api/v1/rooms/'.rawurlencode($name), [
+            'expires_at' => $expiresAt->format(DATE_ATOM),
+        ]));
+    }
+
+    public function repairRoom(string $name): array
+    {
+        $data = $this->send('POST', 'api/v1/rooms/'.rawurlencode($name).'/repair');
+
+        return [
+            'room' => VideoRoom::fromArray($data),
+            'issues' => (array) ($data['issues'] ?? []),
+            'actions' => (array) ($data['actions'] ?? []),
+        ];
+    }
+
+    public function deleteRoom(string $name): void
+    {
+        try {
+            $this->send('DELETE', 'api/v1/rooms/'.rawurlencode($name));
+        } catch (RoomNotFound) {
+            // Already gone from the registry: the outcome the caller asked for.
+        }
+    }
+
+    public function adoptRoom(string $name, string $externalRef, array $window = []): VideoRoom
+    {
+        return VideoRoom::fromArray($this->send('POST', 'api/v1/rooms/adopt', array_filter([
+            'name' => $name,
+            'external_ref' => $externalRef,
+            'starts_at' => $window['starts_at'] ?? null,
+            'ends_at' => $window['ends_at'] ?? null,
+            'expires_at' => $window['expires_at'] ?? null,
+            'domain' => $window['domain'] ?? null,
+        ], fn ($v) => $v !== null)));
+    }
+
+    public function token(string $roomName, ?string $participantId, string $displayName, bool $isOwner, ?\DateTimeInterface $expiresAt = null, bool $autoStartTranscription = false, bool $hidden = false): VideoToken
+    {
+        return VideoToken::fromArray($this->send('POST', 'api/v1/rooms/'.rawurlencode($roomName).'/tokens', array_filter([
+            'participant_id' => $participantId,
+            'display_name' => $displayName,
+            'is_owner' => $isOwner,
+            'expires_at' => $expiresAt?->format(DATE_ATOM),
+            'auto_start_transcription' => $autoStartTranscription ?: null,
+            'hidden' => $hidden ?: null,
+        ], fn ($v) => $v !== null)));
+    }
+
+    public function transcripts(string $roomName): array
+    {
+        $data = $this->send('GET', 'api/v1/rooms/'.rawurlencode($roomName).'/transcripts');
+
+        return array_map(fn (array $t) => VideoTranscript::fromArray($t), (array) ($data['transcripts'] ?? []));
+    }
+
+    public function transcript(string $transcriptId): VideoTranscript
+    {
+        return VideoTranscript::fromArray($this->send('GET', 'api/v1/transcripts/'.rawurlencode($transcriptId)));
+    }
+
+    public function usage(?string $month = null): VideoUsageReport
+    {
+        return new VideoUsageReport($this->send('GET', 'api/v1/usage', $month !== null ? ['month' => $month] : []));
+    }
+
+    public function roomHealth(): array
+    {
+        return $this->send('GET', 'api/v1/rooms/health');
+    }
+
+    public function forwardDailyWebhook(string $rawBody, array $headers): array
+    {
+        $pass = [];
+        foreach (['X-Webhook-Signature', 'X-Webhook-Timestamp'] as $name) {
+            $value = $headers[$name] ?? $headers[strtolower($name)] ?? null;
+            if (is_array($value)) {
+                $value = $value[0] ?? null;
+            }
+            if (is_string($value) && $value !== '') {
+                $pass[$name] = $value;
+            }
+        }
+
+        // The RAW bytes, unchanged: the service verifies Daily's HMAC over them.
+        return $this->request('POST', 'api/v1/webhooks/daily', ['body' => $rawBody, 'headers' => $pass + ['Content-Type' => 'application/json']]);
+    }
+
+    /** @return array<string, mixed> the response's `data` */
+    private function send(string $method, string $path, array $body = []): array
+    {
+        $options = $method === 'GET' ? ['query' => $body] : ($body === [] ? [] : ['json' => $body]);
+
+        return $this->request($method, $path, $options);
+    }
+
+    private function request(string $method, string $path, array $options): array
+    {
+        $options['headers'] = ($options['headers'] ?? []) + [
+            'Authorization' => 'Bearer '.$this->trustKey,
+            'Accept' => 'application/json',
+        ];
+        $options['http_errors'] = false;
+
+        try {
+            $response = $this->http->request($method, $path, $options);
+        } catch (ConnectException $e) {
+            throw new VideoServiceUnavailable('video-service is unreachable: '.$e->getMessage(), 'unreachable', 0);
+        } catch (GuzzleException $e) {
+            throw new VideoServiceUnavailable('video-service request failed: '.$e->getMessage(), 'transport', 0);
+        }
+
+        $json = json_decode((string) $response->getBody(), true);
+        $json = is_array($json) ? $json : [];
+
+        if ($response->getStatusCode() >= 200 && $response->getStatusCode() < 300) {
+            return (array) ($json['data'] ?? []);
+        }
+
+        throw self::errorFor($response, $json);
+    }
+
+    /** ONE translation from the service's error codes to the typed exceptions. */
+    public static function errorFor(ResponseInterface $response, array $json): VideoServiceException
+    {
+        $status = $response->getStatusCode();
+        $code = is_string($json['error'] ?? null) ? $json['error'] : null;
+        $message = (string) ($json['message'] ?? "video-service answered {$status}");
+
+        return match (true) {
+            $code === 'over_budget' => new VideoOverBudget($message, $code, $status),
+            in_array($code, ['room_stranded', 'room_deleted'], true) => new RoomStranded($message, $code, $status),
+            in_array($code, ['room_not_found', 'transcript_not_found'], true) || $status === 404 => new RoomNotFound($message, $code, $status),
+            // Daily refused on the merits (a bad property): fixing the request helps, retrying does not.
+            in_array($code, ['daily_rejected', 'invalid_signature', 'invalid_event', 'forbidden'], true) => new VideoRequestRejected($message, $code, $status),
+            $status === 401 =>new VideoServiceUnavailable('video-service refused the trust key (is VIDEO_SERVICE_TRUST_KEY set?)', $code ?? 'unauthorized', $status),
+            $status >= 500 || $status === 429 => new VideoServiceUnavailable($message, $code, $status),
+            default => new VideoRequestRejected($message, $code, $status),
+        };
+    }
+}
