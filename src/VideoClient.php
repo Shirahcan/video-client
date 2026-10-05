@@ -38,6 +38,9 @@ interface VideoClient
     /** The call-state contract (V16). No Daily call behind it: safe to poll. */
     public function state(string $roomName): VideoCallState;
 
+    /** Who joined, from Daily's session record. Throws when Daily cannot answer. */
+    public function attendance(string $roomName): VideoAttendance;
+
     /** @return array<int, VideoTranscript> */
     public function transcripts(string $roomName): array;
 

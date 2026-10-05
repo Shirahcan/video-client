@@ -63,6 +63,22 @@ class ClientTest extends TestCase
         $this->assertSame('2026-11-02T16:00:00+00:00', $token->call->closesAt);
     }
 
+    public function test_attendance_is_keyed_by_participant_and_an_outage_throws(): void
+    {
+        $seen = $this->client($this->json(200, ['data' => [
+            'room' => 'r', 'sessions' => 1, 'ongoing' => false, 'anonymous_seconds' => 0,
+            'participants' => [['participant_id' => 'u-1', 'first_joined_at' => '2026-11-02T15:01:00+00:00', 'seconds' => 1500]],
+        ]]))->attendance('r');
+
+        $this->assertTrue($seen->attended('u-1'));
+        $this->assertFalse($seen->attended('u-2'));
+        $this->assertFalse($seen->isEmpty());
+        $this->assertStringEndsWith('/api/v1/rooms/r/attendance', (string) $this->history[0]['request']->getUri());
+
+        $this->expectException(VideoServiceUnavailable::class);
+        $this->client($this->json(503, ['success' => false, 'code' => 'daily_unavailable', 'message' => 'down']))->attendance('r');
+    }
+
     /** One exception per remedy. */
     public function test_each_error_code_maps_to_its_own_exception(): void
     {

@@ -122,6 +122,29 @@ class FakeVideoClient implements VideoClient
         );
     }
 
+    /**
+     * What attendance() answers, by room name: the participant ids that joined. A room
+     * that exists but is absent here was empty.
+     *
+     * @var array<string, array<int, string>>
+     */
+    public array $attendanceByRoom = [];
+
+    public function attendance(string $roomName): VideoAttendance
+    {
+        $this->record('attendance', compact('roomName'));
+        if (! isset($this->rooms[$roomName])) {
+            throw new RoomNotFound('No such room for this product.', 'room_not_found', 404);
+        }
+
+        $ids = $this->attendanceByRoom[$roomName] ?? [];
+
+        return new VideoAttendance($roomName, $ids === [] ? 0 : 1, false, 0, array_fill_keys(
+            $ids,
+            ['first_joined_at' => date(DATE_ATOM), 'seconds' => 600],
+        ));
+    }
+
     public function transcripts(string $roomName): array
     {
         $this->record('transcripts', compact('roomName'));
