@@ -101,10 +101,24 @@ class FakeVideoClient implements VideoClient
         return $this->rooms[$name] ??= new VideoRoom($name, $externalRef, $window['domain'] ?? $this->domain, 'active', $window['starts_at'] ?? null, $window['ends_at'] ?? null, null, true);
     }
 
+    public function endRoom(string $name, ?string $endedBy = null): VideoRoom
+    {
+        $this->record('endRoom', compact('name', 'endedBy'));
+        $r = $this->rooms[$name] ?? throw new RoomNotFound('No such room for this product.', 'room_not_found', 404);
+        if ($r->isEnded()) {
+            return $r;
+        }
+
+        return $this->rooms[$name] = new VideoRoom($name, $r->externalRef, $r->domain, $r->status, $r->startsAt, $r->endsAt, $r->expiresAt, $r->adopted, date(DATE_ATOM));
+    }
+
     public function token(string $roomName, ?string $participantId, string $displayName, bool $isOwner, ?\DateTimeInterface $expiresAt = null, bool $autoStartTranscription = false, bool $hidden = false): VideoToken
     {
         $this->record('token', compact('roomName', 'participantId', 'displayName', 'isOwner', 'expiresAt', 'autoStartTranscription', 'hidden'));
         $room = $this->rooms[$roomName] ?? throw new RoomNotFound('No such room for this product.', 'room_not_found', 404);
+        if ($room->isEnded()) {
+            throw new Exceptions\VideoRequestRejected('The host has ended this call.', 'room_ended', 409);
+        }
 
         $token = 'tok-'.substr(md5($roomName.'|'.$participantId.'|'.(int) $isOwner.'|'.(int) $hidden), 0, 16);
 
@@ -117,7 +131,7 @@ class FakeVideoClient implements VideoClient
         $room = $this->rooms[$roomName] ?? throw new RoomNotFound('No such room for this product.', 'room_not_found', 404);
 
         return new VideoCallState(
-            $room->status === 'deleted' ? 'cancelled' : 'open',
+            $room->status === 'deleted' ? 'cancelled' : ($room->isEnded() ? 'closed' : 'open'),
             null, $room->startsAt, $room->endsAt, $room->expiresAt, date(DATE_ATOM), false,
         );
     }
@@ -130,6 +144,17 @@ class FakeVideoClient implements VideoClient
      */
     public array $attendanceByRoom = [];
 
+    /**
+     * When the last person left, by room name (attendance()'s `lastLeftAt`); a room listed
+     * in $ongoingRooms reads as still in a call.
+     *
+     * @var array<string, string>
+     */
+    public array $lastLeftByRoom = [];
+
+    /** @var array<int, string> */
+    public array $ongoingRooms = [];
+
     public function attendance(string $roomName): VideoAttendance
     {
         $this->record('attendance', compact('roomName'));
@@ -139,10 +164,12 @@ class FakeVideoClient implements VideoClient
 
         $ids = $this->attendanceByRoom[$roomName] ?? [];
 
-        return new VideoAttendance($roomName, $ids === [] ? 0 : 1, false, 0, array_fill_keys(
+        $ongoing = in_array($roomName, $this->ongoingRooms, true);
+
+        return new VideoAttendance($roomName, $ids === [] ? 0 : 1, $ongoing, 0, array_fill_keys(
             $ids,
             ['first_joined_at' => date(DATE_ATOM), 'seconds' => 600],
-        ));
+        ), $ongoing ? null : ($this->lastLeftByRoom[$roomName] ?? null));
     }
 
     public function transcripts(string $roomName): array

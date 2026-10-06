@@ -81,6 +81,13 @@ class VideoServiceClient implements VideoClient
         ];
     }
 
+    public function endRoom(string $name, ?string $endedBy = null): VideoRoom
+    {
+        return VideoRoom::fromArray($this->send('POST', 'api/v1/rooms/'.rawurlencode($name).'/end', array_filter([
+            'ended_by' => $endedBy,
+        ], fn ($v) => $v !== null)));
+    }
+
     public function deleteRoom(string $name): void
     {
         try {

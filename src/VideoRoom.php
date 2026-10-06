@@ -17,7 +17,14 @@ final class VideoRoom
         public readonly ?string $endsAt = null,
         public readonly ?string $expiresAt = null,
         public readonly bool $adopted = false,
+        /** Set once a host ended the call; the room admits nobody again. */
+        public readonly ?string $endedAt = null,
     ) {}
+
+    public function isEnded(): bool
+    {
+        return $this->endedAt !== null;
+    }
 
     public static function fromArray(array $data): self
     {
@@ -30,6 +37,7 @@ final class VideoRoom
             endsAt: $data['ends_at'] ?? null,
             expiresAt: $data['expires_at'] ?? null,
             adopted: (bool) ($data['adopted'] ?? false),
+            endedAt: $data['ended_at'] ?? null,
         );
     }
 }

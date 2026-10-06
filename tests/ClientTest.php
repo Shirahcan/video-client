@@ -95,6 +95,42 @@ class ClientTest extends TestCase
         $this->client($this->json(503, ['success' => false, 'code' => 'daily_unavailable', 'message' => 'down']))->attendance('r');
     }
 
+    public function test_end_room_posts_who_ended_it_and_reads_the_end_back(): void
+    {
+        $room = $this->client($this->json(200, ['data' => [
+            'name' => 'r', 'external_ref' => 'm-1', 'domain' => 'shirah', 'status' => 'active', 'ended_at' => '2026-11-02T15:10:00+00:00',
+        ]]))->endRoom('r', 'user-9');
+
+        $this->assertTrue($room->isEnded());
+        $this->assertStringEndsWith('/api/v1/rooms/r/end', (string) $this->history[0]['request']->getUri());
+        $this->assertSame(['ended_by' => 'user-9'], json_decode((string) $this->history[0]['request']->getBody(), true));
+    }
+
+    public function test_attendance_carries_when_the_last_person_left(): void
+    {
+        $seen = $this->client($this->json(200, ['data' => [
+            'room' => 'r', 'sessions' => 1, 'ongoing' => false, 'anonymous_seconds' => 0, 'participants' => [],
+            'last_left_at' => '2026-11-02T15:25:00+00:00',
+        ]]))->attendance('r');
+
+        $this->assertSame('2026-11-02T15:25:00+00:00', $seen->lastLeftAt);
+    }
+
+    public function test_the_fake_refuses_tokens_for_an_ended_room(): void
+    {
+        $fake = new FakeVideoClient('portify');
+        $room = $fake->createRoom('m-1', new \DateTimeImmutable(), new \DateTimeImmutable('+1 hour'));
+        $fake->endRoom($room->name, 'u');
+
+        $this->assertSame('closed', $fake->state($room->name)->state);
+        try {
+            $fake->token($room->name, 'u', 'X', false);
+            $this->fail('an ended room minted a token');
+        } catch (VideoRequestRejected $e) {
+            $this->assertSame('room_ended', $e->errorCode);
+        }
+    }
+
     /** One exception per remedy. */
     public function test_each_error_code_maps_to_its_own_exception(): void
     {

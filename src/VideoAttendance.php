@@ -17,6 +17,8 @@ final class VideoAttendance
         public readonly int $anonymousSeconds,
         /** @var array<string, array{first_joined_at: string, seconds: int}> by participant id */
         public readonly array $participants,
+        /** When the last person left (ISO 8601); null while the call is on or nobody came. */
+        public readonly ?string $lastLeftAt = null,
     ) {}
 
     public function attended(string $participantId): bool
@@ -49,6 +51,7 @@ final class VideoAttendance
             ongoing: (bool) ($data['ongoing'] ?? false),
             anonymousSeconds: (int) ($data['anonymous_seconds'] ?? 0),
             participants: $participants,
+            lastLeftAt: $data['last_left_at'] ?? null,
         );
     }
 }

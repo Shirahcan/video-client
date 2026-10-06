@@ -30,6 +30,12 @@ interface VideoClient
      */
     public function repairRoom(string $name, ?\DateTimeInterface $joinableUntil = null, bool $revive = false, bool $openNow = false): array;
 
+    /**
+     * The host ENDED the call: everyone in it is removed now and the room admits nobody again
+     * (no token, no repair). Idempotent. `$endedBy` is the product's id for who ended it.
+     */
+    public function endRoom(string $name, ?string $endedBy = null): VideoRoom;
+
     /** Idempotent: deleting an already-deleted room succeeds. */
     public function deleteRoom(string $name): void;
 
