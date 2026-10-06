@@ -162,6 +162,11 @@ class VideoServiceClient implements VideoClient
         return new VideoUsageReport($this->send('GET', 'api/v1/usage', $month !== null ? ['month' => $month] : []));
     }
 
+    public function policy(): VideoPolicy
+    {
+        return VideoPolicy::fromArray($this->send('GET', 'api/v1/policy'));
+    }
+
     public function roomHealth(): array
     {
         return $this->send('GET', 'api/v1/rooms/health');

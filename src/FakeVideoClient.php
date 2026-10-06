@@ -225,6 +225,16 @@ class FakeVideoClient implements VideoClient
         return $this->usageReport ?? new VideoUsageReport(['month' => $month ?? date('Y-m'), 'caller' => $this->product, 'estate' => ['minutes' => ['call' => 0, 'transcription' => 0, 'recording' => 0], 'cost_usd' => 0.0], 'products' => []]);
     }
 
+    /** What policy() answers; null = the service's defaults. */
+    public ?VideoPolicy $policyAnswer = null;
+
+    public function policy(): VideoPolicy
+    {
+        $this->record('policy', []);
+
+        return $this->policyAnswer ?? VideoPolicy::fromArray([]);
+    }
+
     public function roomHealth(): array
     {
         $this->record('roomHealth', []);

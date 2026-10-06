@@ -70,6 +70,9 @@ interface VideoClient
 
     public function usage(?string $month = null): VideoUsageReport;
 
+    /** The call rules' numbers (window, idle end, extension, transcript wait), shared by every product. */
+    public function policy(): VideoPolicy;
+
     /** @return array{audited: int, findings: array<int, array>} */
     public function roomHealth(): array;
 

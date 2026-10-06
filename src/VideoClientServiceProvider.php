@@ -32,6 +32,10 @@ class VideoClientServiceProvider extends ServiceProvider
                 timeout: (int) config('video-client.timeout', 15),
             );
         });
+
+        // The shared call window, from the service's numbers (cached; see CallWindows).
+        $this->app->singleton(CallWindows::class, fn ($app) => new CallWindows($app->make(VideoClient::class), $app->make('cache.store')));
+        $this->app->bind(CallWindow::class, fn ($app) => $app->make(CallWindows::class)->current());
     }
 
     public function boot(): void
