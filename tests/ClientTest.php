@@ -106,6 +106,14 @@ class ClientTest extends TestCase
         $this->assertSame(['ended_by' => 'user-9'], json_decode((string) $this->history[0]['request']->getBody(), true));
     }
 
+    public function test_end_if_idle_sends_the_products_idle_time(): void
+    {
+        $result = $this->client($this->json(200, ['data' => ['ended' => true, 'reason' => 'idle']]))->endIfIdle('r', 15);
+
+        $this->assertSame(['ended' => true, 'reason' => 'idle'], $result);
+        $this->assertSame(['idle_minutes' => 15], json_decode((string) $this->history[0]['request']->getBody(), true));
+    }
+
     public function test_attendance_carries_when_the_last_person_left(): void
     {
         $seen = $this->client($this->json(200, ['data' => [

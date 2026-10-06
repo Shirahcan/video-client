@@ -88,6 +88,13 @@ class VideoServiceClient implements VideoClient
         ], fn ($v) => $v !== null)));
     }
 
+    public function endIfIdle(string $name, int $idleMinutes): array
+    {
+        $data = $this->send('POST', 'api/v1/rooms/'.rawurlencode($name).'/end-if-idle', ['idle_minutes' => $idleMinutes]);
+
+        return ['ended' => (bool) ($data['ended'] ?? false), 'reason' => (string) ($data['reason'] ?? '')];
+    }
+
     public function deleteRoom(string $name): void
     {
         try {

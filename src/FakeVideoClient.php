@@ -112,6 +112,24 @@ class FakeVideoClient implements VideoClient
         return $this->rooms[$name] = new VideoRoom($name, $r->externalRef, $r->domain, $r->status, $r->startsAt, $r->endsAt, $r->expiresAt, $r->adopted, date(DATE_ATOM));
     }
 
+    /** What endIfIdle() answers by room name; absent = not idle ('recently_left'). @var array<string, bool> */
+    public array $idleRooms = [];
+
+    public function endIfIdle(string $name, int $idleMinutes): array
+    {
+        $this->record('endIfIdle', compact('name', 'idleMinutes'));
+        $r = $this->rooms[$name] ?? throw new RoomNotFound('No such room for this product.', 'room_not_found', 404);
+        if ($r->isEnded()) {
+            return ['ended' => true, 'reason' => 'already_ended'];
+        }
+        if (! ($this->idleRooms[$name] ?? false)) {
+            return ['ended' => false, 'reason' => 'recently_left'];
+        }
+        $this->endRoom($name, 'idle');
+
+        return ['ended' => true, 'reason' => 'idle'];
+    }
+
     public function token(string $roomName, ?string $participantId, string $displayName, bool $isOwner, ?\DateTimeInterface $expiresAt = null, bool $autoStartTranscription = false, bool $hidden = false): VideoToken
     {
         $this->record('token', compact('roomName', 'participantId', 'displayName', 'isOwner', 'expiresAt', 'autoStartTranscription', 'hidden'));

@@ -36,6 +36,14 @@ interface VideoClient
      */
     public function endRoom(string $name, ?string $endedBy = null): VideoRoom;
 
+    /**
+     * The shared idle rule: end a HELD call (2+ identified people joined) that everyone left
+     * at least `$idleMinutes` ago. The product decides when to ask.
+     *
+     * @return array{ended: bool, reason: string}
+     */
+    public function endIfIdle(string $name, int $idleMinutes): array;
+
     /** Idempotent: deleting an already-deleted room succeeds. */
     public function deleteRoom(string $name): void;
 
