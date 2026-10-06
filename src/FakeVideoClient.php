@@ -115,7 +115,7 @@ class FakeVideoClient implements VideoClient
     /** What endIfIdle() answers by room name; absent = not idle ('recently_left'). @var array<string, bool> */
     public array $idleRooms = [];
 
-    public function endIfIdle(string $name, int $idleMinutes): array
+    public function endIfIdle(string $name, ?int $idleMinutes = null): array
     {
         $this->record('endIfIdle', compact('name', 'idleMinutes'));
         $r = $this->rooms[$name] ?? throw new RoomNotFound('No such room for this product.', 'room_not_found', 404);

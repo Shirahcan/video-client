@@ -38,11 +38,12 @@ interface VideoClient
 
     /**
      * The shared idle rule: end a HELD call (2+ identified people joined) that everyone left
-     * at least `$idleMinutes` ago. The product decides when to ask.
+     * at least `$idleMinutes` ago. Null = the service's own number (the same for every
+     * product, config video-service.idle_end). The product decides when to ask.
      *
      * @return array{ended: bool, reason: string}
      */
-    public function endIfIdle(string $name, int $idleMinutes): array;
+    public function endIfIdle(string $name, ?int $idleMinutes = null): array;
 
     /** Where this call's transcript is (not transcribed, in the call, preparing, ready, overdue). */
     public function transcriptStatus(string $roomName): VideoTranscriptStatus;
