@@ -51,6 +51,22 @@ class ClientTest extends TestCase
         $this->assertStringNotContainsString('daily', strtolower((string) $request->getBody()));
     }
 
+    public function test_repair_sends_the_products_close_and_revive_only_when_asked(): void
+    {
+        $room = ['name' => 'portify-prod-m-1-abcd1234', 'external_ref' => 'm-1', 'domain' => 'shirah', 'status' => 'active'];
+        $client = $this->client(
+            $this->json(200, ['success' => true, 'data' => $room + ['issues' => [], 'actions' => []]]),
+            $this->json(200, ['success' => true, 'data' => $room + ['issues' => ['missing_on_daily'], 'actions' => ['rebuilt on shirah']]]),
+        );
+
+        $client->repairRoom('portify-prod-m-1-abcd1234');
+        $result = $client->repairRoom('portify-prod-m-1-abcd1234', new \DateTimeImmutable('2026-11-02T16:10:00Z'), true);
+
+        $this->assertSame('', (string) $this->history[0]['request']->getBody());
+        $this->assertSame(['joinable_until' => '2026-11-02T16:10:00+00:00', 'revive' => true], json_decode((string) $this->history[1]['request']->getBody(), true));
+        $this->assertSame(['rebuilt on shirah'], $result['actions']);
+    }
+
     public function test_the_token_carries_the_url_and_the_call_state(): void
     {
         $token = $this->client($this->json(201, ['data' => [

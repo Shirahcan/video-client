@@ -77,9 +77,9 @@ class FakeVideoClient implements VideoClient
         return $this->rooms[$name] = new VideoRoom($name, $room->externalRef, $room->domain, $room->status, $room->startsAt, $room->endsAt, $expiresAt->format(DATE_ATOM), $room->adopted);
     }
 
-    public function repairRoom(string $name): array
+    public function repairRoom(string $name, ?\DateTimeInterface $joinableUntil = null, bool $revive = false): array
     {
-        $this->record('repairRoom', compact('name'));
+        $this->record('repairRoom', compact('name', 'joinableUntil', 'revive'));
         $room = $this->rooms[$name] ?? throw new RoomNotFound('No such room for this product.', 'room_not_found', 404);
 
         return ['room' => $room, 'issues' => [], 'actions' => []];

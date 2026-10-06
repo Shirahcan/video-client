@@ -64,9 +64,14 @@ class VideoServiceClient implements VideoClient
         ]));
     }
 
-    public function repairRoom(string $name): array
+    public function repairRoom(string $name, ?\DateTimeInterface $joinableUntil = null, bool $revive = false): array
     {
-        $data = $this->send('POST', 'api/v1/rooms/'.rawurlencode($name).'/repair');
+        $body = array_filter([
+            'joinable_until' => $joinableUntil?->format(\DateTimeInterface::ATOM),
+            'revive' => $revive ?: null,
+        ], fn ($v) => $v !== null);
+
+        $data = $this->send('POST', 'api/v1/rooms/'.rawurlencode($name).'/repair', $body);
 
         return [
             'room' => VideoRoom::fromArray($data),

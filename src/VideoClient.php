@@ -19,12 +19,15 @@ interface VideoClient
     public function setExpiry(string $name, \DateTimeInterface $expiresAt): VideoRoom;
 
     /**
-     * Heal one room before someone enters it (rebuild under the same name if Daily lost
-     * it). Returns the room, the issues found and the actions taken.
+     * Heal one room before (or while) someone enters it: rebuild under the same name if Daily
+     * lost it, move an exp that ends too early, restore knocking. `$joinableUntil` is the
+     * product's own close (host extension included) so a repair never shortens the call;
+     * `$revive` rebuilds a room deleted by a cancel the product has undone. Any change drops
+     * the room's cached tokens, so the next token() mints afresh.
      *
      * @return array{room: VideoRoom, issues: array<int, string>, actions: array<int, string>}
      */
-    public function repairRoom(string $name): array;
+    public function repairRoom(string $name, ?\DateTimeInterface $joinableUntil = null, bool $revive = false): array;
 
     /** Idempotent: deleting an already-deleted room succeeds. */
     public function deleteRoom(string $name): void;
