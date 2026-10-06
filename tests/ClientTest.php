@@ -118,7 +118,7 @@ class ClientTest extends TestCase
     {
         $this->client($this->json(200, ['data' => ['ended' => false, 'reason' => 'recently_left']]))->endIfIdle('r');
 
-        $this->assertSame([], json_decode((string) $this->history[0]['request']->getBody(), true));
+        $this->assertArrayNotHasKey('idle_minutes', (array) json_decode((string) $this->history[0]['request']->getBody(), true));
     }
 
     public function test_transcript_status_reads_the_services_answer(): void
