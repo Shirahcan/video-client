@@ -103,7 +103,7 @@ class FakeVideoClient implements VideoClient
 
     public function token(string $roomName, ?string $participantId, string $displayName, bool $isOwner, ?\DateTimeInterface $expiresAt = null, bool $autoStartTranscription = false, bool $hidden = false): VideoToken
     {
-        $this->record('token', compact('roomName', 'participantId', 'displayName', 'isOwner', 'autoStartTranscription', 'hidden'));
+        $this->record('token', compact('roomName', 'participantId', 'displayName', 'isOwner', 'expiresAt', 'autoStartTranscription', 'hidden'));
         $room = $this->rooms[$roomName] ?? throw new RoomNotFound('No such room for this product.', 'room_not_found', 404);
 
         $token = 'tok-'.substr(md5($roomName.'|'.$participantId.'|'.(int) $isOwner.'|'.(int) $hidden), 0, 16);
