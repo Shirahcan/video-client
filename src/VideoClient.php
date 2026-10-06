@@ -23,11 +23,12 @@ interface VideoClient
      * lost it, move an exp that ends too early, restore knocking. `$joinableUntil` is the
      * product's own close (host extension included) so a repair never shortens the call;
      * `$revive` rebuilds a room deleted by a cancel the product has undone. Any change drops
-     * the room's cached tokens, so the next token() mints afresh.
+     * the room's cached tokens, so the next token() mints afresh. `$openNow` is the product's
+     * word that someone should be able to enter NOW (a room Daily still holds shut is opened).
      *
      * @return array{room: VideoRoom, issues: array<int, string>, actions: array<int, string>}
      */
-    public function repairRoom(string $name, ?\DateTimeInterface $joinableUntil = null, bool $revive = false): array;
+    public function repairRoom(string $name, ?\DateTimeInterface $joinableUntil = null, bool $revive = false, bool $openNow = false): array;
 
     /** Idempotent: deleting an already-deleted room succeeds. */
     public function deleteRoom(string $name): void;
