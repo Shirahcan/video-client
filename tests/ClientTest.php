@@ -114,6 +114,20 @@ class ClientTest extends TestCase
         $this->assertSame(['idle_minutes' => 15], json_decode((string) $this->history[0]['request']->getBody(), true));
     }
 
+    public function test_transcript_status_reads_the_services_answer(): void
+    {
+        $s = $this->client($this->json(200, ['data' => [
+            'state' => 'preparing', 'transcribing' => true, 'call_ended_at' => '2026-11-02T15:25:00+00:00',
+            'expected_by' => '2026-11-02T16:25:00+00:00', 'ready_within_minutes' => 60,
+            'transcripts' => [['id' => 'tx-1', 'status' => 'in_progress'], ['id' => 'tx-0', 'status' => 'ready']],
+        ]]))->transcriptStatus('r');
+
+        $this->assertSame('preparing', $s->state);
+        $this->assertSame('2026-11-02T16:25:00+00:00', $s->expectedBy);
+        $this->assertSame(['tx-0'], $s->readyIds());
+        $this->assertStringEndsWith('/api/v1/rooms/r/transcript-status', (string) $this->history[0]['request']->getUri());
+    }
+
     public function test_attendance_carries_when_the_last_person_left(): void
     {
         $seen = $this->client($this->json(200, ['data' => [

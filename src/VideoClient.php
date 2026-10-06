@@ -44,6 +44,9 @@ interface VideoClient
      */
     public function endIfIdle(string $name, int $idleMinutes): array;
 
+    /** Where this call's transcript is (not transcribed, in the call, preparing, ready, overdue). */
+    public function transcriptStatus(string $roomName): VideoTranscriptStatus;
+
     /** Idempotent: deleting an already-deleted room succeeds. */
     public function deleteRoom(string $name): void;
 

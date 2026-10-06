@@ -145,6 +145,11 @@ class VideoServiceClient implements VideoClient
         return array_map(fn (array $t) => VideoTranscript::fromArray($t), (array) ($data['transcripts'] ?? []));
     }
 
+    public function transcriptStatus(string $roomName): VideoTranscriptStatus
+    {
+        return VideoTranscriptStatus::fromArray($this->send('GET', 'api/v1/rooms/'.rawurlencode($roomName).'/transcript-status'));
+    }
+
     public function transcript(string $transcriptId): VideoTranscript
     {
         return VideoTranscript::fromArray($this->send('GET', 'api/v1/transcripts/'.rawurlencode($transcriptId)));

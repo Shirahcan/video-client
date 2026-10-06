@@ -197,6 +197,20 @@ class FakeVideoClient implements VideoClient
         return array_values(array_filter($this->transcriptsById, fn (VideoTranscript $t) => $t->room === $roomName));
     }
 
+    /** What transcriptStatus() answers by room name; absent = not_started. @var array<string, VideoTranscriptStatus> */
+    public array $transcriptStatusByRoom = [];
+
+    public function transcriptStatus(string $roomName): VideoTranscriptStatus
+    {
+        $this->record('transcriptStatus', compact('roomName'));
+        if (! isset($this->rooms[$roomName])) {
+            throw new RoomNotFound('No such room for this product.', 'room_not_found', 404);
+        }
+
+        return $this->transcriptStatusByRoom[$roomName]
+            ?? new VideoTranscriptStatus(VideoTranscriptStatus::NOT_STARTED, true, null, null, [], 60);
+    }
+
     public function transcript(string $transcriptId): VideoTranscript
     {
         $this->record('transcript', compact('transcriptId'));
