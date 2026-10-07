@@ -86,6 +86,13 @@ interface VideoClient
 
     public function usage(?string $month = null): VideoUsageReport;
 
+    /**
+     * The calling product's own billed sessions and transcripts since a moment, newest first.
+     *
+     * @return array<int, VideoUsageSession>
+     */
+    public function usageSessions(?\DateTimeInterface $since = null, int $limit = 200): array;
+
     /** The call rules' numbers (window, idle end, extension, transcript wait), shared by every product. */
     public function policy(): VideoPolicy;
 

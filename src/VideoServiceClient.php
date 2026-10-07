@@ -178,6 +178,16 @@ class VideoServiceClient implements VideoClient
         return new VideoUsageReport($this->send('GET', 'api/v1/usage', $month !== null ? ['month' => $month] : []));
     }
 
+    public function usageSessions(?\DateTimeInterface $since = null, int $limit = 200): array
+    {
+        $data = $this->send('GET', 'api/v1/usage/sessions', array_filter([
+            'since' => $since?->format(DATE_ATOM),
+            'limit' => $limit,
+        ], fn ($v) => $v !== null));
+
+        return array_map(fn (array $r) => VideoUsageSession::fromArray($r), (array) ($data['sessions'] ?? []));
+    }
+
     public function policy(): VideoPolicy
     {
         return VideoPolicy::fromArray($this->send('GET', 'api/v1/policy'));

@@ -244,6 +244,16 @@ class FakeVideoClient implements VideoClient
         return $this->usageReport ?? new VideoUsageReport(['month' => $month ?? date('Y-m'), 'caller' => $this->product, 'estate' => ['minutes' => ['call' => 0, 'transcription' => 0, 'recording' => 0], 'cost_usd' => 0.0], 'products' => []]);
     }
 
+    /** @var array<int, VideoUsageSession> what usageSessions() answers */
+    public array $usageSessions = [];
+
+    public function usageSessions(?\DateTimeInterface $since = null, int $limit = 200): array
+    {
+        $this->record('usageSessions', ['since' => $since?->format(DATE_ATOM), 'limit' => $limit]);
+
+        return array_slice($this->usageSessions, 0, $limit);
+    }
+
     /** What policy() answers; null = the service's defaults. */
     public ?VideoPolicy $policyAnswer = null;
 

@@ -138,6 +138,19 @@ class ClientTest extends TestCase
         $this->assertSame(['participant_id' => 'u-1'], json_decode((string) $this->history[0]['request']->getBody(), true));
     }
 
+    public function test_usage_sessions_lists_the_callers_own_sessions(): void
+    {
+        $rows = $this->client($this->json(200, ['data' => ['sessions' => [
+            ['kind' => 'call', 'id' => 's1', 'room' => 'meeting-a', 'started_at' => '2026-11-02T15:00:00+00:00', 'duration_seconds' => 120, 'participant_count' => 2, 'billed_minutes' => 4],
+        ]]]))->usageSessions(new \DateTimeImmutable('2026-11-01T00:00:00+00:00'), 50);
+
+        $this->assertCount(1, $rows);
+        $this->assertSame(['call', 's1', 'meeting-a', 2, 4.0], [$rows[0]->kind, $rows[0]->id, $rows[0]->room, $rows[0]->participantCount, $rows[0]->billedMinutes]);
+        $uri = (string) $this->history[0]['request']->getUri();
+        $this->assertStringContainsString('/api/v1/usage/sessions?', $uri);
+        $this->assertStringContainsString('limit=50', $uri);
+    }
+
     public function test_transcript_status_reads_the_services_answer(): void
     {
         $s = $this->client($this->json(200, ['data' => [
