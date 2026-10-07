@@ -24,6 +24,14 @@ return [
     'callback_secret' => env('VIDEO_SERVICE_CALLBACK_SECRET', ''),
 
     /*
+    | Presence from the call page (Laravel\Presence): the product's PresenceAccess, which says
+    | who is sending it and for which room. Required once the product mounts VideoKit::presenceRoute.
+    */
+    'presence' => [
+        'access' => null,
+    ],
+
+    /*
     |--------------------------------------------------------------------------
     | Deliberately absent
     |--------------------------------------------------------------------------
