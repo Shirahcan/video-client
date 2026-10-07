@@ -36,6 +36,10 @@ class VideoClientServiceProvider extends ServiceProvider
         // The shared call window, from the service's numbers (cached; see CallWindows).
         $this->app->singleton(CallWindows::class, fn ($app) => new CallWindows($app->make(VideoClient::class), $app->make('cache.store')));
         $this->app->bind(CallWindow::class, fn ($app) => $app->make(CallWindows::class)->current());
+        $this->app->bind(Laravel\Transcripts\TranscriptSweep::class, fn ($app) => new Laravel\Transcripts\TranscriptSweep(
+            $app->make(VideoClient::class),
+            fn (\Throwable $e) => report($e),
+        ));
         $this->app->bind(Laravel\Presence\RelayPresence::class, fn ($app) => new Laravel\Presence\RelayPresence(
             $app->make(VideoClient::class),
             fn (object $event) => $app['events']->dispatch($event),

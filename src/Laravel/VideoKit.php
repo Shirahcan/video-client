@@ -4,6 +4,7 @@ namespace Shirahcan\VideoClient\Laravel;
 
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Route as Router;
+use Shirahcan\VideoClient\Laravel\Http\CallbackController;
 use Shirahcan\VideoClient\Laravel\Http\PresenceController;
 
 /**
@@ -21,5 +22,18 @@ final class VideoKit
     public static function presenceRoute(string $prefix, string $name = 'video.presence'): Route
     {
         return Router::post(rtrim($prefix, '/').'/{meeting}/presence', PresenceController::class)->name($name);
+    }
+
+    /**
+     * Where video-service delivers this product's call events (register the full URL on the
+     * service with `video:set-callback <product> <url>`). Signature-checked with
+     * VIDEO_SERVICE_CALLBACK_SECRET; each event reaches the product once as VideoEventReceived.
+     * Mount it OUTSIDE any auth middleware: the signature is the authentication.
+     *
+     *     VideoKit::callbackRoute('v1/webhooks/video-service', 'webhooks.video-service');
+     */
+    public static function callbackRoute(string $uri = 'webhooks/video-service', string $name = 'video.callback'): Route
+    {
+        return Router::post(ltrim($uri, '/'), CallbackController::class)->name($name);
     }
 }
