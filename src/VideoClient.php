@@ -64,14 +64,20 @@ interface VideoClient
     public function attendance(string $roomName): VideoAttendance;
 
     /**
-     * Was the call held: the shared rule, from Daily's record plus what the product's own
-     * telemetry saw. The product only says who is on which side.
+     * Was the call held: the shared rule, judged from the SERVICE'S own evidence (Daily's
+     * record, Daily's participant webhooks, relayed heartbeats). The product only says who is
+     * on which side.
      *
      * @param  array<int, string>  $hosts
      * @param  array<int, string>  $guests
-     * @param  array<int, string>  $alsoPresent
      */
-    public function verdict(string $roomName, array $hosts, array $guests, array $alsoPresent = []): VideoVerdict;
+    public function verdict(string $roomName, array $hosts, array $guests): VideoVerdict;
+
+    /**
+     * Relay one in-call heartbeat from the product's call page (the browser cannot reach the
+     * service). The service keeps it as its own witness for the verdict.
+     */
+    public function presence(string $roomName, string $participantId, ?\DateTimeInterface $at = null): void;
 
     /** @return array<int, VideoTranscript> */
     public function transcripts(string $roomName): array;

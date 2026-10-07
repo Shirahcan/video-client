@@ -176,11 +176,20 @@ class FakeVideoClient implements VideoClient
     /** What verdict() answers by room name; absent = 'not_yet'. @var array<string, VideoVerdict> */
     public array $verdicts = [];
 
-    public function verdict(string $roomName, array $hosts, array $guests, array $alsoPresent = []): VideoVerdict
+    public function verdict(string $roomName, array $hosts, array $guests): VideoVerdict
     {
-        $this->record('verdict', compact('roomName', 'hosts', 'guests', 'alsoPresent'));
+        $this->record('verdict', compact('roomName', 'hosts', 'guests'));
 
         return $this->verdicts[$roomName] ?? new VideoVerdict(VideoVerdict::NOT_YET);
+    }
+
+    /** Heartbeats relayed, as [room, participant]. @var array<int, array{0: string, 1: string}> */
+    public array $presence = [];
+
+    public function presence(string $roomName, string $participantId, ?\DateTimeInterface $at = null): void
+    {
+        $this->record('presence', compact('roomName', 'participantId'));
+        $this->presence[] = [$roomName, $participantId];
     }
 
     public function attendance(string $roomName): VideoAttendance

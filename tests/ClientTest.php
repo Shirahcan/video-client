@@ -123,11 +123,19 @@ class ClientTest extends TestCase
 
     public function test_verdict_sends_the_sides_and_reads_the_answer(): void
     {
-        $v = $this->client($this->json(200, ['data' => ['verdict' => 'guest_absent', 'present' => ['h']]]))->verdict('r', ['h'], ['g'], ['x']);
+        $v = $this->client($this->json(200, ['data' => ['verdict' => 'guest_absent', 'present' => ['h']]]))->verdict('r', ['h'], ['g']);
 
         $this->assertSame('guest_absent', $v->verdict);
         $this->assertTrue($v->isFinal());
-        $this->assertSame(['hosts' => ['h'], 'guests' => ['g'], 'also_present' => ['x']], json_decode((string) $this->history[0]['request']->getBody(), true));
+        $this->assertSame(['hosts' => ['h'], 'guests' => ['g']], json_decode((string) $this->history[0]['request']->getBody(), true));
+    }
+
+    public function test_presence_relays_one_heartbeat(): void
+    {
+        $this->client($this->json(200, ['data' => ['recorded' => true]]))->presence('r', 'u-1');
+
+        $this->assertStringEndsWith('/api/v1/rooms/r/presence', (string) $this->history[0]['request']->getUri());
+        $this->assertSame(['participant_id' => 'u-1'], json_decode((string) $this->history[0]['request']->getBody(), true));
     }
 
     public function test_transcript_status_reads_the_services_answer(): void
