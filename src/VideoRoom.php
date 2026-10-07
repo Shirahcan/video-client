@@ -21,6 +21,17 @@ final class VideoRoom
         public readonly ?string $endedAt = null,
     ) {}
 
+    /**
+     * The room's address WITHOUT a token, for the product's own records only (a stored
+     * reference, a log line). Built here once, so no product builds it again. ⚠ Never give it to
+     * a browser: a private room answers it with "you are not allowed to join". Embed
+     * {@see VideoToken::$url}.
+     */
+    public function address(): string
+    {
+        return 'https://'.$this->domain.'.daily.co/'.$this->name;
+    }
+
     public function isEnded(): bool
     {
         return $this->endedAt !== null;
