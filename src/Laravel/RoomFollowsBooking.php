@@ -24,6 +24,13 @@ use Shirahcan\VideoClient\VideoClient;
  */
 abstract class RoomFollowsBooking
 {
+    /**
+     * Set while the product keeps a room on its meeting (RoomSubject::remember). That save fires
+     * this observer again, and on a meeting created a moment ago the times can read as changed
+     * (a datetime cast quirk), which moved the room it had just made. Its own save is not news.
+     */
+    private static bool $remembering = false;
+
     abstract protected function subject(): RoomSubject;
 
     protected function client(): VideoClient
@@ -43,6 +50,10 @@ abstract class RoomFollowsBooking
 
     public function updated(object $meeting): void
     {
+        if (self::$remembering) {
+            return;
+        }
+
         $subject = $this->subject();
         if (! $subject->enabled()) {
             return;
@@ -69,8 +80,7 @@ abstract class RoomFollowsBooking
         }
 
         if ($subject->justMoved($meeting)) {
-            $this->quietly(fn () => $subject->remember(
-                $meeting,
+            $this->quietly(fn () => $this->remember($subject, $meeting,
                 $this->client()->rescheduleRoom($room, $subject->startsAt($meeting), $subject->endsAt($meeting)),
             ));
         }
@@ -79,12 +89,22 @@ abstract class RoomFollowsBooking
     private function ensure(RoomSubject $subject, object $meeting): void
     {
         // Keyed on the meeting: asking twice returns the same room, never a second one.
-        $subject->remember($meeting, $this->client()->createRoom(
+        $this->remember($subject, $meeting, $this->client()->createRoom(
             $subject->externalRef($meeting),
             $subject->startsAt($meeting),
             $subject->endsAt($meeting),
             $subject->options($meeting),
         ));
+    }
+
+    private function remember(RoomSubject $subject, object $meeting, \Shirahcan\VideoClient\VideoRoom $room): void
+    {
+        self::$remembering = true;
+        try {
+            $subject->remember($meeting, $room);
+        } finally {
+            self::$remembering = false;
+        }
     }
 
     private function quietly(callable $fn): void

@@ -25,6 +25,9 @@ class FakeSubject implements RoomSubject
 {
     public bool $on = true;
 
+    /** Runs inside remember(), like a product's own save firing the observer again. */
+    public ?\Closure $onRemember = null;
+
     public function enabled(): bool { return $this->on; }
 
     public function wantsRoom(object $meeting): bool { return $meeting->video; }
@@ -39,7 +42,13 @@ class FakeSubject implements RoomSubject
 
     public function roomName(object $meeting): ?string { return $meeting->room; }
 
-    public function remember(object $meeting, VideoRoom $room): void { $meeting->room = $room->name; }
+    public function remember(object $meeting, VideoRoom $room): void
+    {
+        $meeting->room = $room->name;
+        if ($this->onRemember) {
+            ($this->onRemember)($meeting);
+        }
+    }
 
     public function justCancelled(object $meeting): bool { return $meeting->cancelledNow; }
 
@@ -134,6 +143,19 @@ class RoomFollowsBookingTest extends TestCase
         $this->observer->created($m);
 
         $this->assertNull($m->room);
+    }
+
+    public function test_its_own_save_while_keeping_the_room_is_not_a_reschedule(): void
+    {
+        $observer = $this->observer;
+        $this->subject->onRemember = function (FakeMeeting $m) use ($observer) {
+            $m->movedNow = true; // a fresh model's times can read as changed
+            $observer->updated($m);
+        };
+
+        $this->observer->created($this->meeting());
+
+        $this->assertSame(0, $this->video->callCount('rescheduleRoom'));
     }
 
     public function test_the_room_says_its_internal_address(): void
