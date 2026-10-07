@@ -41,7 +41,8 @@ abstract class RoomFollowsBooking
     public function created(object $meeting): void
     {
         $subject = $this->subject();
-        if (! $subject->enabled() || ! $subject->wantsRoom($meeting)) {
+        // A meeting that arrives already holding a room (adopted, imported) keeps it.
+        if (! $subject->enabled() || ! $subject->wantsRoom($meeting) || $subject->roomName($meeting) !== null) {
             return;
         }
 

@@ -91,6 +91,16 @@ class RoomFollowsBookingTest extends TestCase
         $this->assertSame(1, $this->video->callCount('createRoom'));
     }
 
+    public function test_a_meeting_that_arrives_with_a_room_keeps_it(): void
+    {
+        $m = $this->meeting();
+        $m->room = 'adopted-room';
+        $this->observer->created($m);
+
+        $this->assertSame('adopted-room', $m->room);
+        $this->assertSame(0, $this->video->callCount('createRoom'));
+    }
+
     public function test_a_call_with_no_video_gets_none_and_off_does_nothing(): void
     {
         $m = new FakeMeeting('m-2', '2026-11-02T15:00:00Z', '2026-11-02T15:30:00Z', video: false);
