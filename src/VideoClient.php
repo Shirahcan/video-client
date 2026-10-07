@@ -63,6 +63,16 @@ interface VideoClient
     /** Who joined, from Daily's session record. Throws when Daily cannot answer. */
     public function attendance(string $roomName): VideoAttendance;
 
+    /**
+     * Was the call held: the shared rule, from Daily's record plus what the product's own
+     * telemetry saw. The product only says who is on which side.
+     *
+     * @param  array<int, string>  $hosts
+     * @param  array<int, string>  $guests
+     * @param  array<int, string>  $alsoPresent
+     */
+    public function verdict(string $roomName, array $hosts, array $guests, array $alsoPresent = []): VideoVerdict;
+
     /** @return array<int, VideoTranscript> */
     public function transcripts(string $roomName): array;
 

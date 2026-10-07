@@ -140,6 +140,15 @@ class VideoServiceClient implements VideoClient
         return VideoAttendance::fromArray($this->send('GET', 'api/v1/rooms/'.rawurlencode($roomName).'/attendance'));
     }
 
+    public function verdict(string $roomName, array $hosts, array $guests, array $alsoPresent = []): VideoVerdict
+    {
+        return VideoVerdict::fromArray($this->send('POST', 'api/v1/rooms/'.rawurlencode($roomName).'/verdict', [
+            'hosts' => array_values($hosts),
+            'guests' => array_values($guests),
+            'also_present' => array_values($alsoPresent),
+        ]));
+    }
+
     public function transcripts(string $roomName): array
     {
         $data = $this->send('GET', 'api/v1/rooms/'.rawurlencode($roomName).'/transcripts');

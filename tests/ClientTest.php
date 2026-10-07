@@ -121,6 +121,15 @@ class ClientTest extends TestCase
         $this->assertArrayNotHasKey('idle_minutes', (array) json_decode((string) $this->history[0]['request']->getBody(), true));
     }
 
+    public function test_verdict_sends_the_sides_and_reads_the_answer(): void
+    {
+        $v = $this->client($this->json(200, ['data' => ['verdict' => 'guest_absent', 'present' => ['h']]]))->verdict('r', ['h'], ['g'], ['x']);
+
+        $this->assertSame('guest_absent', $v->verdict);
+        $this->assertTrue($v->isFinal());
+        $this->assertSame(['hosts' => ['h'], 'guests' => ['g'], 'also_present' => ['x']], json_decode((string) $this->history[0]['request']->getBody(), true));
+    }
+
     public function test_transcript_status_reads_the_services_answer(): void
     {
         $s = $this->client($this->json(200, ['data' => [
