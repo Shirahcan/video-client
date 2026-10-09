@@ -192,6 +192,11 @@ class VideoServiceClient implements VideoClient
         ], fn ($v) => $v !== null)));
     }
 
+    public function importTranscript(string $callRef, array $transcript): CallTranscript
+    {
+        return CallTranscript::fromArray($this->send('POST', 'api/v1/calls/'.rawurlencode($callRef).'/transcripts/import', array_filter($transcript, fn ($v) => $v !== null)));
+    }
+
     public function saveCleanText(string $transcriptId, ?string $cleanText): CallTranscript
     {
         // `clean_text` must be PRESENT (null clears it), so it is never filtered out.

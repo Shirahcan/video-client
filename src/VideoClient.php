@@ -95,6 +95,14 @@ interface VideoClient
     /** A person's transcript for a call (held elsewhere, or whose capture failed). */
     public function supplyTranscript(string $callRef, string $text, ?string $language = null, ?string $suppliedBy = null): CallTranscript;
 
+    /**
+     * Move a transcript the product already held into the service, as it was. `$transcript`:
+     * external_id (required, the idempotency key), source, status, and optionally session_id,
+     * language, duration_seconds, text, vtt, clean_text, clean_generated_at, supplied_by,
+     * supplied_at, created_at.
+     */
+    public function importTranscript(string $callRef, array $transcript): CallTranscript;
+
     /** Save (or clear, with null) the product's cleaned text on a kept transcript. */
     public function saveCleanText(string $transcriptId, ?string $cleanText): CallTranscript;
 

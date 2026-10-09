@@ -72,6 +72,9 @@ class CallRecordsTest extends TestCase
         $this->assertSame(CallTranscript::SUPPLIED, $supplied->source);
         $this->assertSame('Tidy.', $fake->saveCleanText($supplied->id, 'Tidy.')->cleanText);
 
+        $moved = ['external_id' => 'tr-old', 'source' => 'captured', 'status' => 'ready', 'text' => 'old'];
+        $this->assertSame($fake->importTranscript('booking-9', $moved)->id, $fake->importTranscript('booking-9', $moved)->id);
+
         $fake->reportJoinIssue('booking-1', ['category' => 'call', 'kind' => 'network']);
         $this->assertSame('network', $fake->joinIssues('booking-1')[0]->kind);
         $this->assertSame([], $fake->joinIssues('booking-2'));

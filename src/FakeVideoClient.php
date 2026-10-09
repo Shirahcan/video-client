@@ -283,6 +283,19 @@ class FakeVideoClient implements VideoClient
         ]);
     }
 
+    public function importTranscript(string $callRef, array $transcript): CallTranscript
+    {
+        $this->record('importTranscript', compact('callRef', 'transcript'));
+        foreach ($this->callTranscriptsById as $t) {
+            if ($t->externalId !== null && $t->externalId === ($transcript['external_id'] ?? null)) {
+                return $t;
+            }
+        }
+        $id = (string) (count($this->callTranscriptsById) + 1);
+
+        return $this->callTranscriptsById[$id] = CallTranscript::fromArray(['id' => $id, 'call_ref' => $callRef] + $transcript);
+    }
+
     public function saveCleanText(string $transcriptId, ?string $cleanText): CallTranscript
     {
         $this->record('saveCleanText', compact('transcriptId', 'cleanText'));
