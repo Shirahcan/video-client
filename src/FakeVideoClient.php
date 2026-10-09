@@ -77,9 +77,9 @@ class FakeVideoClient implements VideoClient
         return $this->rooms[$name] = new VideoRoom($name, $room->externalRef, $room->domain, $room->status, $room->startsAt, $room->endsAt, $expiresAt->format(DATE_ATOM), $room->adopted);
     }
 
-    public function repairRoom(string $name, ?\DateTimeInterface $joinableUntil = null, bool $revive = false, bool $openNow = false): array
+    public function repairRoom(string $name, ?\DateTimeInterface $joinableUntil = null, bool $revive = false, bool $openNow = false, ?string $person = null, ?string $linkId = null): array
     {
-        $this->record('repairRoom', compact('name', 'joinableUntil', 'revive', 'openNow'));
+        $this->record('repairRoom', compact('name', 'joinableUntil', 'revive', 'openNow', 'person', 'linkId'));
         $room = $this->rooms[$name] ?? throw new RoomNotFound('No such room for this product.', 'room_not_found', 404);
 
         return ['room' => $room, 'issues' => [], 'actions' => []];
@@ -235,6 +235,79 @@ class FakeVideoClient implements VideoClient
         $this->record('transcript', compact('transcriptId'));
 
         return $this->transcriptsById[$transcriptId] ?? throw new RoomNotFound('No such transcript for this product.', 'transcript_not_found', 404);
+    }
+
+    /** Kept transcripts by id (callTranscripts reads these). @var array<string, CallTranscript> */
+    public array $callTranscriptsById = [];
+
+    /** Reported join issues, in order. @var array<int, CallJoinIssue> */
+    public array $joinIssuesList = [];
+
+    /** Test helper: the service has captured this transcript for a call. */
+    public function captured(string $callRef, string $text, array $extra = []): CallTranscript
+    {
+        $id = (string) (count($this->callTranscriptsById) + 1);
+
+        return $this->callTranscriptsById[$id] = CallTranscript::fromArray($extra + [
+            'id' => $id, 'call_ref' => $callRef, 'source' => CallTranscript::CAPTURED, 'status' => 'ready', 'text' => $text,
+            'created_at' => date(DATE_ATOM),
+        ]);
+    }
+
+    public function callTranscripts(string $callRef): array
+    {
+        $this->record('callTranscripts', compact('callRef'));
+        $rows = array_values(array_filter($this->callTranscriptsById, fn (CallTranscript $t) => $t->callRef === $callRef));
+
+        return array_reverse($rows);
+    }
+
+    public function supplyTranscript(string $callRef, string $text, ?string $language = null, ?string $suppliedBy = null): CallTranscript
+    {
+        $this->record('supplyTranscript', compact('callRef', 'text', 'language', 'suppliedBy'));
+        if (trim($text) === '') {
+            throw new VideoServiceException('The transcript has no text.', 'transcript_empty', 422);
+        }
+        // A still-failed or unfinished row of the same call is replaced (the service's rule).
+        $id = null;
+        foreach ($this->callTranscriptsById as $k => $t) {
+            if ($t->callRef === $callRef && $t->status !== 'ready') {
+                $id = $k;
+            }
+        }
+        $id ??= (string) (count($this->callTranscriptsById) + 1);
+
+        return $this->callTranscriptsById[$id] = CallTranscript::fromArray([
+            'id' => $id, 'call_ref' => $callRef, 'source' => CallTranscript::SUPPLIED, 'status' => 'ready', 'text' => trim($text),
+            'language' => $language, 'supplied_by' => $suppliedBy, 'supplied_at' => date(DATE_ATOM), 'created_at' => date(DATE_ATOM),
+        ]);
+    }
+
+    public function saveCleanText(string $transcriptId, ?string $cleanText): CallTranscript
+    {
+        $this->record('saveCleanText', compact('transcriptId', 'cleanText'));
+        $t = $this->callTranscriptsById[$transcriptId] ?? throw new VideoServiceException('No such transcript for this product.', 'transcript_not_found', 404);
+
+        return $this->callTranscriptsById[$transcriptId] = CallTranscript::fromArray([
+            'clean_text' => $cleanText,
+            'clean_generated_at' => $cleanText === null ? null : date(DATE_ATOM),
+        ] + $t->toArray());
+    }
+
+    public function reportJoinIssue(string $callRef, array $issue): CallJoinIssue
+    {
+        $this->record('reportJoinIssue', compact('callRef', 'issue'));
+
+        return $this->joinIssuesList[] = CallJoinIssue::fromArray($issue + [
+            'id' => (string) (count($this->joinIssuesList) + 1), 'call_ref' => $callRef, 'occurred_at' => date(DATE_ATOM),
+        ]);
+    }
+
+    public function joinIssues(string $callRef): array
+    {
+        $this->record('joinIssues', compact('callRef'));
+
+        return array_reverse(array_values(array_filter($this->joinIssuesList, fn (CallJoinIssue $i) => $i->callRef === $callRef)));
     }
 
     public function usage(?string $month = null): VideoUsageReport

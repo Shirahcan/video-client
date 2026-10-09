@@ -64,12 +64,15 @@ class VideoServiceClient implements VideoClient
         ]));
     }
 
-    public function repairRoom(string $name, ?\DateTimeInterface $joinableUntil = null, bool $revive = false, bool $openNow = false): array
+    public function repairRoom(string $name, ?\DateTimeInterface $joinableUntil = null, bool $revive = false, bool $openNow = false, ?string $person = null, ?string $linkId = null): array
     {
         $body = array_filter([
             'joinable_until' => $joinableUntil?->format(\DateTimeInterface::ATOM),
             'revive' => $revive ?: null,
             'open_now' => $openNow ?: null,
+            // Who was at the door: the service keeps a repair that found something as their issue.
+            'person' => $person,
+            'link_id' => $linkId,
         ], fn ($v) => $v !== null);
 
         $data = $this->send('POST', 'api/v1/rooms/'.rawurlencode($name).'/repair', $body);
@@ -171,6 +174,40 @@ class VideoServiceClient implements VideoClient
     public function transcript(string $transcriptId): VideoTranscript
     {
         return VideoTranscript::fromArray($this->send('GET', 'api/v1/transcripts/'.rawurlencode($transcriptId)));
+    }
+
+    public function callTranscripts(string $callRef): array
+    {
+        $data = $this->send('GET', 'api/v1/calls/'.rawurlencode($callRef).'/transcripts');
+
+        return array_map(fn (array $t) => CallTranscript::fromArray($t), (array) ($data['transcripts'] ?? []));
+    }
+
+    public function supplyTranscript(string $callRef, string $text, ?string $language = null, ?string $suppliedBy = null): CallTranscript
+    {
+        return CallTranscript::fromArray($this->send('POST', 'api/v1/calls/'.rawurlencode($callRef).'/transcripts', array_filter([
+            'text' => $text,
+            'language' => $language,
+            'supplied_by' => $suppliedBy,
+        ], fn ($v) => $v !== null)));
+    }
+
+    public function saveCleanText(string $transcriptId, ?string $cleanText): CallTranscript
+    {
+        // `clean_text` must be PRESENT (null clears it), so it is never filtered out.
+        return CallTranscript::fromArray($this->request('PATCH', 'api/v1/transcripts/'.rawurlencode($transcriptId), ['json' => ['clean_text' => $cleanText]]));
+    }
+
+    public function reportJoinIssue(string $callRef, array $issue): CallJoinIssue
+    {
+        return CallJoinIssue::fromArray($this->send('POST', 'api/v1/calls/'.rawurlencode($callRef).'/issues', array_filter($issue, fn ($v) => $v !== null)));
+    }
+
+    public function joinIssues(string $callRef): array
+    {
+        $data = $this->send('GET', 'api/v1/calls/'.rawurlencode($callRef).'/issues');
+
+        return array_map(fn (array $i) => CallJoinIssue::fromArray($i), (array) ($data['issues'] ?? []));
     }
 
     public function usage(?string $month = null): VideoUsageReport

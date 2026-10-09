@@ -28,7 +28,7 @@ interface VideoClient
      *
      * @return array{room: VideoRoom, issues: array<int, string>, actions: array<int, string>}
      */
-    public function repairRoom(string $name, ?\DateTimeInterface $joinableUntil = null, bool $revive = false, bool $openNow = false): array;
+    public function repairRoom(string $name, ?\DateTimeInterface $joinableUntil = null, bool $revive = false, bool $openNow = false, ?string $person = null, ?string $linkId = null): array;
 
     /**
      * The host ENDED the call: everyone in it is removed now and the room admits nobody again
@@ -83,6 +83,29 @@ interface VideoClient
     public function transcripts(string $roomName): array;
 
     public function transcript(string $transcriptId): VideoTranscript;
+
+    /**
+     * A call's transcripts as the service KEEPS them (owner 2026-10-09), newest first. The call
+     * reference is the product's booking id, or its own reference for a call never booked.
+     *
+     * @return array<int, CallTranscript>
+     */
+    public function callTranscripts(string $callRef): array;
+
+    /** A person's transcript for a call (held elsewhere, or whose capture failed). */
+    public function supplyTranscript(string $callRef, string $text, ?string $language = null, ?string $suppliedBy = null): CallTranscript;
+
+    /** Save (or clear, with null) the product's cleaned text on a kept transcript. */
+    public function saveCleanText(string $transcriptId, ?string $cleanText): CallTranscript;
+
+    /**
+     * Report that somebody could not get into a call. `$issue`: category (call|device), kind,
+     * and optionally device, outcome, browser, message, person, link_id, occurred_at.
+     */
+    public function reportJoinIssue(string $callRef, array $issue): CallJoinIssue;
+
+    /** @return array<int, CallJoinIssue> newest first */
+    public function joinIssues(string $callRef): array;
 
     public function usage(?string $month = null): VideoUsageReport;
 
