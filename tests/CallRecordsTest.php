@@ -62,6 +62,15 @@ class CallRecordsTest extends TestCase
         $this->assertSame(['category' => 'device', 'kind' => 'in-use'], json_decode((string) $this->history[0]['request']->getBody(), true));
     }
 
+    public function test_a_per_person_audience_keeps_a_link_for_each_person(): void
+    {
+        $fake = new FakeVideoClient();
+        $a = $fake->issueJoinLinks('m-1', [['audience' => 'participant', 'person' => 'p-1', 'per_person' => true]]);
+        $b = $fake->issueJoinLinks('m-1', [['audience' => 'participant', 'person' => 'p-2', 'per_person' => true]]);
+        $this->assertNotSame($a[0]->token, $b[0]->token);
+        $this->assertSame($a[0]->token, $fake->issueJoinLinks('m-1', [['audience' => 'participant', 'person' => 'p-1', 'per_person' => true]])[0]->token);
+    }
+
     public function test_join_links_are_issued_once_rotated_resolved_and_follow_a_rekey(): void
     {
         $fake = new FakeVideoClient();

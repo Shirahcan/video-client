@@ -338,7 +338,7 @@ class FakeVideoClient implements VideoClient
         $this->record('issueJoinLinks', compact('callRef', 'audiences'));
         $out = [];
         foreach ($audiences as $a) {
-            $active = $this->activeLink($callRef, $a['audience']);
+            $active = $this->activeLink($callRef, $a['audience'], $a);
             $out[] = $active ?? $this->mintLink($callRef, $a['audience'], $a['person'] ?? null);
         }
 
@@ -350,7 +350,7 @@ class FakeVideoClient implements VideoClient
         $this->record('rotateJoinLinks', compact('callRef', 'audiences'));
         $out = [];
         foreach ($audiences as $a) {
-            $old = $this->activeLink($callRef, $a['audience']);
+            $old = $this->activeLink($callRef, $a['audience'], $a);
             $new = $this->mintLink($callRef, $a['audience'], $a['person'] ?? null);
             if ($old !== null) {
                 $this->joinLinksById[$old->id] = JoinLink::fromArray(['active' => false, 'revoked_reason' => 'rescheduled', 'superseded_by' => $new->id, 'revoked_at' => date(DATE_ATOM)] + $old->toArray());
@@ -441,10 +441,13 @@ class FakeVideoClient implements VideoClient
         return $moved;
     }
 
-    private function activeLink(string $callRef, string $audience): ?JoinLink
+    /** As the service: by audience, or by audience and person when the entry is per_person. */
+    private function activeLink(string $callRef, string $audience, ?array $entry = null): ?JoinLink
     {
+        $perPerson = ! empty($entry['per_person']);
         foreach ($this->joinLinksById as $l) {
-            if ($l->callRef === $callRef && $l->audience === $audience && $l->active) {
+            if ($l->callRef === $callRef && $l->audience === $audience && $l->active
+                && (! $perPerson || $l->person === ($entry['person'] ?? null))) {
                 return $l;
             }
         }
