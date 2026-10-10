@@ -215,6 +215,62 @@ class VideoServiceClient implements VideoClient
         return array_map(fn (array $i) => CallJoinIssue::fromArray($i), (array) ($data['issues'] ?? []));
     }
 
+    public function joinLinks(string $callRef): array
+    {
+        return self::links($this->send('GET', 'api/v1/calls/'.rawurlencode($callRef).'/join-links'));
+    }
+
+    public function issueJoinLinks(string $callRef, array $audiences): array
+    {
+        return self::links($this->send('POST', 'api/v1/calls/'.rawurlencode($callRef).'/join-links', ['audiences' => array_values($audiences)]));
+    }
+
+    public function rotateJoinLinks(string $callRef, array $audiences): array
+    {
+        return self::links($this->send('POST', 'api/v1/calls/'.rawurlencode($callRef).'/join-links/rotate', ['audiences' => array_values($audiences)]));
+    }
+
+    public function revokeJoinLinks(string $callRef, string $reason = 'manual'): int
+    {
+        return (int) ($this->send('POST', 'api/v1/calls/'.rawurlencode($callRef).'/join-links/revoke', ['reason' => $reason])['revoked'] ?? 0);
+    }
+
+    public function resolveJoinLink(string $token): ?JoinLink
+    {
+        try {
+            return JoinLink::fromArray($this->send('POST', 'api/v1/join-links/resolve', ['token' => $token]));
+        } catch (Exceptions\RoomNotFound) {
+            return null;
+        }
+    }
+
+    public function importJoinLink(string $callRef, array $link): JoinLink
+    {
+        return JoinLink::fromArray($this->send('POST', 'api/v1/calls/'.rawurlencode($callRef).'/join-links/import', array_filter($link, fn ($v) => $v !== null)));
+    }
+
+    public function roomForCall(string $callRef): ?VideoRoom
+    {
+        try {
+            return VideoRoom::fromArray($this->send('GET', 'api/v1/calls/'.rawurlencode($callRef).'/room'));
+        } catch (Exceptions\RoomNotFound) {
+            return null;
+        }
+    }
+
+    public function rekeyCall(string $fromRef, string $toRef): array
+    {
+        $moved = (array) ($this->send('POST', 'api/v1/calls/'.rawurlencode($fromRef).'/rekey', ['to' => $toRef])['moved'] ?? []);
+
+        return ['rooms' => (int) ($moved['rooms'] ?? 0), 'transcripts' => (int) ($moved['transcripts'] ?? 0), 'issues' => (int) ($moved['issues'] ?? 0), 'links' => (int) ($moved['links'] ?? 0)];
+    }
+
+    /** @return array<int, JoinLink> */
+    private static function links(array $data): array
+    {
+        return array_map(fn (array $l) => JoinLink::fromArray($l), (array) ($data['links'] ?? []));
+    }
+
     public function usage(?string $month = null): VideoUsageReport
     {
         return new VideoUsageReport($this->send('GET', 'api/v1/usage', $month !== null ? ['month' => $month] : []));

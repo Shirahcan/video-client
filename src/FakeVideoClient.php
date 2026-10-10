@@ -323,6 +323,142 @@ class FakeVideoClient implements VideoClient
         return array_reverse(array_values(array_filter($this->joinIssuesList, fn (CallJoinIssue $i) => $i->callRef === $callRef)));
     }
 
+    /** Every join link ever made, by id (active or not). @var array<string, JoinLink> */
+    public array $joinLinksById = [];
+
+    public function joinLinks(string $callRef): array
+    {
+        $this->record('joinLinks', compact('callRef'));
+
+        return array_values(array_filter($this->joinLinksById, fn (JoinLink $l) => $l->callRef === $callRef && $l->active));
+    }
+
+    public function issueJoinLinks(string $callRef, array $audiences): array
+    {
+        $this->record('issueJoinLinks', compact('callRef', 'audiences'));
+        $out = [];
+        foreach ($audiences as $a) {
+            $active = $this->activeLink($callRef, $a['audience']);
+            $out[] = $active ?? $this->mintLink($callRef, $a['audience'], $a['person'] ?? null);
+        }
+
+        return $out;
+    }
+
+    public function rotateJoinLinks(string $callRef, array $audiences): array
+    {
+        $this->record('rotateJoinLinks', compact('callRef', 'audiences'));
+        $out = [];
+        foreach ($audiences as $a) {
+            $old = $this->activeLink($callRef, $a['audience']);
+            $new = $this->mintLink($callRef, $a['audience'], $a['person'] ?? null);
+            if ($old !== null) {
+                $this->joinLinksById[$old->id] = JoinLink::fromArray(['active' => false, 'revoked_reason' => 'rescheduled', 'superseded_by' => $new->id, 'revoked_at' => date(DATE_ATOM)] + $old->toArray());
+            }
+            $out[] = $new;
+        }
+
+        return $out;
+    }
+
+    public function revokeJoinLinks(string $callRef, string $reason = 'manual'): int
+    {
+        $this->record('revokeJoinLinks', compact('callRef', 'reason'));
+        $n = 0;
+        foreach ($this->joinLinksById as $id => $l) {
+            if ($l->callRef === $callRef && $l->active) {
+                $this->joinLinksById[$id] = JoinLink::fromArray(['active' => false, 'revoked_reason' => $reason, 'revoked_at' => date(DATE_ATOM)] + $l->toArray());
+                $n++;
+            }
+        }
+
+        return $n;
+    }
+
+    public function resolveJoinLink(string $token): ?JoinLink
+    {
+        $this->record('resolveJoinLink', ['token' => '***']);
+        foreach ($this->joinLinksById as $l) {
+            if (hash_equals($l->token, $token)) {
+                return $l;
+            }
+        }
+
+        return null;
+    }
+
+    public function importJoinLink(string $callRef, array $link): JoinLink
+    {
+        $this->record('importJoinLink', compact('callRef'));
+        $held = $this->resolveJoinLink((string) ($link['token'] ?? ''));
+
+        return $held ?? $this->joinLinksById[$id = 'jl-'.(count($this->joinLinksById) + 1)] = JoinLink::fromArray([
+            'id' => $id, 'call_ref' => $callRef, 'active' => empty($link['revoked_at']),
+        ] + $link);
+    }
+
+    public function roomForCall(string $callRef): ?VideoRoom
+    {
+        $this->record('roomForCall', compact('callRef'));
+        foreach ($this->rooms as $room) {
+            if ($room->externalRef === $callRef) {
+                return $room;
+            }
+        }
+
+        return null;
+    }
+
+    public function rekeyCall(string $fromRef, string $toRef): array
+    {
+        $this->record('rekeyCall', compact('fromRef', 'toRef'));
+        $moved = ['rooms' => 0, 'transcripts' => 0, 'issues' => 0, 'links' => 0];
+        foreach ($this->rooms as $name => $room) {
+            if ($room->externalRef === $fromRef) {
+                $this->rooms[$name] = new VideoRoom($room->name, $toRef, $room->domain, $room->status, $room->startsAt, $room->endsAt, $room->expiresAt, $room->adopted, $room->endedAt);
+                $moved['rooms']++;
+            }
+        }
+        foreach ($this->callTranscriptsById as $id => $t) {
+            if ($t->callRef === $fromRef) {
+                $this->callTranscriptsById[$id] = CallTranscript::fromArray(['call_ref' => $toRef] + $t->toArray());
+                $moved['transcripts']++;
+            }
+        }
+        foreach ($this->joinIssuesList as $i => $issue) {
+            if ($issue->callRef === $fromRef) {
+                $this->joinIssuesList[$i] = CallJoinIssue::fromArray(['call_ref' => $toRef] + $issue->toArray());
+                $moved['issues']++;
+            }
+        }
+        foreach ($this->joinLinksById as $id => $l) {
+            if ($l->callRef === $fromRef) {
+                $this->joinLinksById[$id] = JoinLink::fromArray(['call_ref' => $toRef] + $l->toArray());
+                $moved['links']++;
+            }
+        }
+
+        return $moved;
+    }
+
+    private function activeLink(string $callRef, string $audience): ?JoinLink
+    {
+        foreach ($this->joinLinksById as $l) {
+            if ($l->callRef === $callRef && $l->audience === $audience && $l->active) {
+                return $l;
+            }
+        }
+
+        return null;
+    }
+
+    private function mintLink(string $callRef, string $audience, ?string $person): JoinLink
+    {
+        $id = 'jl-'.(count($this->joinLinksById) + 1);
+
+        return $this->joinLinksById[$id] = new JoinLink($id, $callRef, $audience, $person, bin2hex(random_bytes(24)));
+    }
+
     public function usage(?string $month = null): VideoUsageReport
     {
         $this->record('usage', compact('month'));

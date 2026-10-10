@@ -115,6 +115,48 @@ interface VideoClient
     /** @return array<int, CallJoinIssue> newest first */
     public function joinIssues(string $callRef): array;
 
+    /**
+     * The call's active join links (plan C1a), one per audience.
+     *
+     * @return array<int, JoinLink>
+     */
+    public function joinLinks(string $callRef): array;
+
+    /**
+     * Make sure each audience has an active link; an existing one is kept (idempotent).
+     *
+     * @param  array<int, array{audience: string, person?: ?string}>  $audiences
+     * @return array<int, JoinLink>
+     */
+    public function issueJoinLinks(string $callRef, array $audiences): array;
+
+    /**
+     * A fresh link per audience; the one replaced is revoked as rescheduled and points at it.
+     *
+     * @param  array<int, array{audience: string, person?: ?string}>  $audiences
+     * @return array<int, JoinLink>
+     */
+    public function rotateJoinLinks(string $callRef, array $audiences): array;
+
+    /** Every active link of the call stops working. Returns how many were revoked. */
+    public function revokeJoinLinks(string $callRef, string $reason = 'manual'): int;
+
+    /** Which call and side a link opens; null when it is not this product's link. */
+    public function resolveJoinLink(string $token): ?JoinLink;
+
+    /** Move a link the product already emailed, with the same token (idempotent). */
+    public function importJoinLink(string $callRef, array $link): JoinLink;
+
+    /** The call's room, asked for by the call; null while it has none. */
+    public function roomForCall(string $callRef): ?VideoRoom;
+
+    /**
+     * Rename a call: its room, transcripts, join issues and links move together.
+     *
+     * @return array{rooms: int, transcripts: int, issues: int, links: int}
+     */
+    public function rekeyCall(string $fromRef, string $toRef): array;
+
     public function usage(?string $month = null): VideoUsageReport;
 
     /**

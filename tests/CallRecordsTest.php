@@ -62,6 +62,29 @@ class CallRecordsTest extends TestCase
         $this->assertSame(['category' => 'device', 'kind' => 'in-use'], json_decode((string) $this->history[0]['request']->getBody(), true));
     }
 
+    public function test_join_links_are_issued_once_rotated_resolved_and_follow_a_rekey(): void
+    {
+        $fake = new FakeVideoClient();
+        $first = $fake->issueJoinLinks('m-1', [['audience' => 'client', 'person' => 'u-1'], ['audience' => 'consultant', 'person' => 'u-2']]);
+        $again = $fake->issueJoinLinks('m-1', [['audience' => 'client', 'person' => 'u-1']]);
+        $this->assertSame($first[0]->token, $again[0]->token);
+
+        $rotated = $fake->rotateJoinLinks('m-1', [['audience' => 'client', 'person' => 'u-1']]);
+        $this->assertFalse($fake->resolveJoinLink($first[0]->token)->active);
+        $this->assertSame($rotated[0]->id, $fake->resolveJoinLink($first[0]->token)->supersededBy);
+
+        $fake->rekeyCall('m-1', 'booking-1');
+        $this->assertCount(2, $fake->joinLinks('booking-1'));
+        $this->assertSame(2, $fake->revokeJoinLinks('booking-1', 'cancelled'));
+        $this->assertNull($fake->resolveJoinLink('nope'));
+    }
+
+    public function test_the_client_reads_a_missing_room_as_null(): void
+    {
+        $client = $this->client($this->json(404, ['success' => false, 'error' => 'room_not_found', 'message' => 'No such room']));
+        $this->assertNull($client->roomForCall('m-9'));
+    }
+
     public function test_the_fake_keeps_one_record_per_call_and_replaces_a_failed_one(): void
     {
         $fake = new FakeVideoClient();
