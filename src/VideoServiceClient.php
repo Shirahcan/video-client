@@ -332,21 +332,19 @@ class VideoServiceClient implements VideoClient
         return $this->send('GET', 'api/v1/rooms/health');
     }
 
-    public function forwardDailyWebhook(string $rawBody, array $headers): array
+    public function deleteCall(string $callRef): array
     {
-        $pass = [];
-        foreach (['X-Webhook-Signature', 'X-Webhook-Timestamp'] as $name) {
-            $value = $headers[$name] ?? $headers[strtolower($name)] ?? null;
-            if (is_array($value)) {
-                $value = $value[0] ?? null;
-            }
-            if (is_string($value) && $value !== '') {
-                $pass[$name] = $value;
-            }
-        }
+        return array_map('intval', (array) ($this->send('DELETE', 'api/v1/calls/'.rawurlencode($callRef))['removed'] ?? []));
+    }
 
-        // The RAW bytes, unchanged: the service verifies Daily's HMAC over them.
-        return $this->request('POST', 'api/v1/webhooks/daily', ['body' => $rawBody, 'headers' => $pass + ['Content-Type' => 'application/json']]);
+    public function retentionPolicy(): array
+    {
+        return $this->send('GET', 'api/v1/policy/retention');
+    }
+
+    public function setRetentionPolicy(?int $transcriptDays, ?string $updatedBy = null): array
+    {
+        return $this->send('PUT', 'api/v1/policy/retention', ['transcript_days' => $transcriptDays, 'updated_by' => $updatedBy]);
     }
 
     /** @return array<string, mixed> the response's `data` */

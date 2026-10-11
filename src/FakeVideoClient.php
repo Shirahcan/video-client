@@ -22,7 +22,10 @@ class FakeVideoClient implements VideoClient
     public array $transcriptsById = [];
 
     /** @var array<int, array{raw: string, headers: array}> */
-    public array $forwarded = [];
+    /** @var list<string> call refs forgotten through deleteCall() */
+    public array $deletedCalls = [];
+
+    public ?int $transcriptDays = null;
 
     public ?VideoUsageReport $usageReport = null;
 
@@ -565,12 +568,34 @@ class FakeVideoClient implements VideoClient
         return ['audited' => count($this->rooms), 'findings' => []];
     }
 
-    public function forwardDailyWebhook(string $rawBody, array $headers): array
+    public function deleteCall(string $callRef): array
     {
-        $this->record('forwardDailyWebhook', []);
-        $this->forwarded[] = ['raw' => $rawBody, 'headers' => $headers];
+        $this->record('deleteCall', [$callRef]);
+        $this->deletedCalls[] = $callRef;
+        $rooms = 0;
+        foreach ($this->rooms as $name => $room) {
+            if (($room->externalRef ?? null) === $callRef) {
+                unset($this->rooms[$name]);
+                $rooms++;
+            }
+        }
 
-        return ['event_id' => md5($rawBody), 'duplicate' => false];
+        return ['transcripts' => 0, 'presence' => 0, 'join_links' => 0, 'join_issues' => 0, 'events' => 0, 'rooms' => $rooms];
+    }
+
+    public function retentionPolicy(): array
+    {
+        $this->record('retentionPolicy', []);
+
+        return ['transcript_days' => $this->transcriptDays, 'max_days' => 3650, 'updated_by' => null, 'updated_at' => null];
+    }
+
+    public function setRetentionPolicy(?int $transcriptDays, ?string $updatedBy = null): array
+    {
+        $this->record('setRetentionPolicy', [$transcriptDays, $updatedBy]);
+        $this->transcriptDays = $transcriptDays;
+
+        return ['transcript_days' => $transcriptDays, 'max_days' => 3650, 'updated_by' => $updatedBy, 'updated_at' => null];
     }
 
     /** How many times a method was called. */

@@ -198,6 +198,21 @@ interface VideoClient
     /** @return array{audited: int, findings: array<int, array>} */
     public function roomHealth(): array;
 
-    /** Portify only: forward one raw Daily webhook delivery (the D1 pipe). */
-    public function forwardDailyWebhook(string $rawBody, array $headers): array;
+    /**
+     * Forget everything the service holds about one of this product's calls: transcripts (on Daily
+     * too), rooms, presence, join links, join issues and raw events. Idempotent.
+     *
+     * @return array<string, int> what was removed, by kind
+     */
+    public function deleteCall(string $callRef): array;
+
+    /** @return array{transcript_days: ?int, max_days: int, updated_by: ?string, updated_at: ?string} */
+    public function retentionPolicy(): array;
+
+    /**
+     * How long this product's call transcripts are kept (null = keep). The product's admin decides.
+     *
+     * @return array{transcript_days: ?int, max_days: int, updated_by: ?string, updated_at: ?string}
+     */
+    public function setRetentionPolicy(?int $transcriptDays, ?string $updatedBy = null): array;
 }

@@ -228,17 +228,20 @@ class ClientTest extends TestCase
         $this->assertCount(1, $this->history);
     }
 
-    public function test_the_pipe_forwards_raw_bytes_and_daily_headers_unchanged(): void
+    public function test_a_call_is_forgotten_and_retention_is_read_and_set(): void
     {
-        $raw = '{"type":"participant.joined","payload":{"room":"r"}}';
+        $client = $this->client(
+            $this->json(200, ['data' => ['removed' => ['transcripts' => 2, 'rooms' => 1]]]),
+            $this->json(200, ['data' => ['transcript_days' => null, 'max_days' => 3650]]),
+            $this->json(200, ['data' => ['transcript_days' => 90, 'max_days' => 3650]]),
+        );
 
-        $this->client($this->json(202, ['data' => ['event_id' => 'e', 'duplicate' => false]]))
-            ->forwardDailyWebhook($raw, ['x-webhook-signature' => ['SIG'], 'x-webhook-timestamp' => ['123'], 'host' => ['evil']]);
-
-        $request = $this->history[0]['request'];
-        $this->assertSame($raw, (string) $request->getBody());
-        $this->assertSame('SIG', $request->getHeaderLine('X-Webhook-Signature'));
-        $this->assertSame('123', $request->getHeaderLine('X-Webhook-Timestamp'));
+        $this->assertSame(['transcripts' => 2, 'rooms' => 1], $client->deleteCall('booking 1'));
+        $this->assertSame('DELETE', $this->history[0]['request']->getMethod());
+        $this->assertStringEndsWith('/api/v1/calls/booking%201', (string) $this->history[0]['request']->getUri());
+        $this->assertNull($client->retentionPolicy()['transcript_days']);
+        $this->assertSame(90, $client->setRetentionPolicy(90, 'admin@x')['transcript_days']);
+        $this->assertSame(['transcript_days' => 90, 'updated_by' => 'admin@x'], json_decode((string) $this->history[2]['request']->getBody(), true));
     }
 
     public function test_callback_signatures_verify_and_reject_tampering_and_replay(): void
