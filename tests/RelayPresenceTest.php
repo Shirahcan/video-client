@@ -56,4 +56,18 @@ class RelayPresenceTest extends TestCase
         $this->assertSame([], $this->video->presence);
         $this->assertCount(2, $this->events);
     }
+
+    public function test_with_a_call_ref_every_signal_reaches_the_service_by_the_call_room_or_not(): void
+    {
+        $this->video = new FakeVideoClient("portify");
+        $who = new PresenceParticipant("m-1", "u-1", null, [], "booking-9");
+
+        $this->relay()->relay($who, "join");
+        $this->relay()->relay($who, "leave");
+
+        $this->assertSame(["join", "leave"], array_column($this->video->callPresence, 2));
+        $this->assertSame([], $this->video->presence, "never twice");
+        $this->assertFalse($this->video->callSummaries(["booking-9"])["booking-9"]->live, "left");
+        $this->assertCount(2, $this->events);
+    }
 }

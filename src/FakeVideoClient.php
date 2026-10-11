@@ -192,6 +192,75 @@ class FakeVideoClient implements VideoClient
         $this->presence[] = [$roomName, $participantId];
     }
 
+    /** Call-page signals by ref, as [ref, participant, kind, at]. @var array<int, array{0: string, 1: string, 2: string, 3: string}> */
+    public array $callPresence = [];
+
+    /** Verdicts to answer by call ref; unset = judged from $callPresence by the service's rule. @var array<string, VideoVerdict> */
+    public array $callVerdicts = [];
+
+    public function callPresence(string $callRef, string $participantId, string $kind = 'heartbeat', ?\DateTimeInterface $at = null): void
+    {
+        $this->record('callPresence', compact('callRef', 'participantId', 'kind'));
+        $this->callPresence[] = [$callRef, $participantId, $kind, ($at ?? new \DateTimeImmutable())->format(DATE_ATOM)];
+    }
+
+    public function callSummaries(array $callRefs): array
+    {
+        $this->record('callSummaries', compact('callRefs'));
+        $now = new \DateTimeImmutable();
+        $out = [];
+        foreach (array_values(array_unique(array_map('strval', $callRefs))) as $ref) {
+            $rows = array_values(array_filter($this->callPresence, fn ($p) => $p[0] === $ref));
+            if ($rows === []) {
+                $out[$ref] = VideoCallSummary::none($ref);
+
+                continue;
+            }
+            $seen = array_filter($rows, fn ($p) => $p[2] !== 'leave');
+            $first = $seen === [] ? null : min(array_map(fn ($p) => $p[3], $seen));
+            $last = $seen === [] ? null : max(array_map(fn ($p) => $p[3], $seen));
+            $live = false;
+            foreach (array_unique(array_map(fn ($p) => $p[1], $rows)) as $who) {
+                $mine = array_values(array_filter($rows, fn ($p) => $p[1] === $who));
+                $latest = end($mine);
+                if ($latest[2] !== 'leave' && $now->getTimestamp() - (new \DateTimeImmutable($latest[3]))->getTimestamp() <= 150) {
+                    $live = true;
+                }
+            }
+            $room = null;
+            foreach ($this->rooms as $r) {
+                if ($r->externalRef === $ref) {
+                    $room = $r;
+                }
+            }
+            $out[$ref] = new VideoCallSummary($ref, $room?->name, $first, $last, $room?->endedAt ?? null, $live && ($room?->endedAt ?? null) === null,
+                array_values(array_unique(array_map(fn ($p) => $p[1], $seen))));
+        }
+
+        return $out;
+    }
+
+    public function callVerdict(string $callRef, array $hosts, array $guests, \DateTimeInterface $endsAt): VideoVerdict
+    {
+        $this->record('callVerdict', compact('callRef', 'hosts', 'guests'));
+        if (isset($this->callVerdicts[$callRef])) {
+            return $this->callVerdicts[$callRef];
+        }
+        if ((new \DateTimeImmutable())->getTimestamp() < $endsAt->getTimestamp() + 30 * 60) {
+            return new VideoVerdict(VideoVerdict::NOT_YET);
+        }
+        $present = $this->callSummaries([$callRef])[$callRef]->present;
+        $hostCame = array_intersect($hosts, $present) !== [];
+        $guestCame = $guests === [] ? $hostCame : array_intersect($guests, $present) !== [];
+
+        return new VideoVerdict(match (true) {
+            $hostCame && $guestCame => VideoVerdict::HELD,
+            $hostCame => VideoVerdict::GUEST_ABSENT,
+            $guestCame => VideoVerdict::HOST_ABSENT,
+            default => VideoVerdict::NOBODY,
+        }, $present);
+    }
+
     public function attendance(string $roomName): VideoAttendance
     {
         $this->record('attendance', compact('roomName'));

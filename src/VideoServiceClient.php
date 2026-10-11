@@ -159,6 +159,42 @@ class VideoServiceClient implements VideoClient
         ], fn ($v) => $v !== null));
     }
 
+    public function callPresence(string $callRef, string $participantId, string $kind = 'heartbeat', ?\DateTimeInterface $at = null): void
+    {
+        $this->send('POST', 'api/v1/calls/'.rawurlencode($callRef).'/presence', array_filter([
+            'participant_id' => $participantId,
+            'kind' => $kind,
+            'at' => $at?->format(DATE_ATOM),
+        ], fn ($v) => $v !== null));
+    }
+
+    public function callSummaries(array $callRefs): array
+    {
+        $refs = array_values(array_unique(array_filter(array_map('strval', $callRefs), fn ($r) => $r !== '')));
+        if ($refs === []) {
+            return [];
+        }
+        $out = [];
+        foreach (array_chunk($refs, 200) as $chunk) {
+            $data = $this->send('POST', 'api/v1/calls/summaries', ['refs' => $chunk]);
+            foreach ($chunk as $ref) {
+                $row = $data['calls'][$ref] ?? null;
+                $out[$ref] = is_array($row) ? VideoCallSummary::fromArray($ref, $row) : VideoCallSummary::none($ref);
+            }
+        }
+
+        return $out;
+    }
+
+    public function callVerdict(string $callRef, array $hosts, array $guests, \DateTimeInterface $endsAt): VideoVerdict
+    {
+        return VideoVerdict::fromArray($this->send('POST', 'api/v1/calls/'.rawurlencode($callRef).'/verdict', [
+            'hosts' => array_values($hosts),
+            'guests' => array_values($guests),
+            'ends_at' => $endsAt->format(DATE_ATOM),
+        ]));
+    }
+
     public function transcripts(string $roomName): array
     {
         $data = $this->send('GET', 'api/v1/rooms/'.rawurlencode($roomName).'/transcripts');

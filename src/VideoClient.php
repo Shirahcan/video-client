@@ -79,6 +79,31 @@ interface VideoClient
      */
     public function presence(string $roomName, string $participantId, ?\DateTimeInterface $at = null): void;
 
+    /**
+     * What a call page saw, by the call's ref, with or without a room on the service (an own Zoom
+     * or Meet link has none). A leave is kept, so the service can say whether the call is live.
+     *
+     * @param 'join'|'heartbeat'|'leave' $kind
+     */
+    public function callPresence(string $callRef, string $participantId, string $kind = 'heartbeat', ?\DateTimeInterface $at = null): void;
+
+    /**
+     * What the service saw of each call: first joined, last seen, ended, live now, who.
+     *
+     * @param array<int, string> $callRefs
+     * @return array<string, VideoCallSummary> by ref (a ref nobody was seen in is a summary with nothing)
+     */
+    public function callSummaries(array $callRefs): array;
+
+    /**
+     * Was the call held, by its ref: the room's verdict when it has one, else judged on the ref's
+     * presence once `$endsAt` plus the after-window has passed. The same rule either way.
+     *
+     * @param array<int, string> $hosts
+     * @param array<int, string> $guests
+     */
+    public function callVerdict(string $callRef, array $hosts, array $guests, \DateTimeInterface $endsAt): VideoVerdict;
+
     /** @return array<int, VideoTranscript> */
     public function transcripts(string $roomName): array;
 

@@ -268,4 +268,25 @@ class ClientTest extends TestCase
         $this->expectException(VideoServiceUnavailable::class);
         $fake->room($a->name);
     }
+
+    public function test_call_presence_summaries_and_verdict_hit_their_routes(): void
+    {
+        $client = $this->client(
+            $this->json(200, ["success" => true, "data" => ["recorded" => true]]),
+            $this->json(200, ["success" => true, "data" => ["calls" => ["b-1" => ["room" => null, "first_joined_at" => "2026-11-03T10:01:00+00:00", "last_seen_at" => "2026-11-03T10:02:00+00:00", "ended_at" => null, "live" => true, "present" => ["u-1"]]]]]),
+            $this->json(200, ["success" => true, "data" => ["verdict" => "guest_absent", "present" => ["u-1"]]]),
+        );
+
+        $client->callPresence("b-1", "u-1", "join", new \DateTimeImmutable("2026-11-03T10:01:00Z"));
+        $summaries = $client->callSummaries(["b-1", "b-2"]);
+        $verdict = $client->callVerdict("b-1", ["u-1"], ["u-2"], new \DateTimeImmutable("2026-11-03T10:30:00Z"));
+
+        $this->assertSame("/api/v1/calls/b-1/presence", $this->history[0]["request"]->getUri()->getPath());
+        $this->assertSame("join", json_decode((string) $this->history[0]["request"]->getBody(), true)["kind"]);
+        $this->assertTrue($summaries["b-1"]->live);
+        $this->assertSame("2026-11-03T10:01:00+00:00", $summaries["b-1"]->firstJoinedAt);
+        $this->assertFalse($summaries["b-2"]->live, "a call nobody was seen in");
+        $this->assertSame("guest_absent", $verdict->verdict);
+        $this->assertSame("/api/v1/calls/b-1/verdict", $this->history[2]["request"]->getUri()->getPath());
+    }
 }
