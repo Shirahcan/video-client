@@ -40,6 +40,11 @@ class VideoClientServiceProvider extends ServiceProvider
             $app->make(VideoClient::class),
             fn (\Throwable $e) => report($e),
         ));
+        // What the service saw of each call, asked once per request for a whole list of refs.
+        $this->app->scoped(Laravel\Presence\CallLive::class, fn ($app) => new Laravel\Presence\CallLive(
+            $app->make(VideoClient::class),
+            fn (\Throwable $e) => report($e),
+        ));
         $this->app->bind(Laravel\Presence\RelayPresence::class, fn ($app) => new Laravel\Presence\RelayPresence(
             $app->make(VideoClient::class),
             fn (object $event) => $app['events']->dispatch($event),

@@ -223,11 +223,13 @@ class FakeVideoClient implements VideoClient
             $first = $seen === [] ? null : min(array_map(fn ($p) => $p[3], $seen));
             $last = $seen === [] ? null : max(array_map(fn ($p) => $p[3], $seen));
             $live = false;
+            $inNow = [];
             foreach (array_unique(array_map(fn ($p) => $p[1], $rows)) as $who) {
                 $mine = array_values(array_filter($rows, fn ($p) => $p[1] === $who));
                 $latest = end($mine);
                 if ($latest[2] !== 'leave' && $now->getTimestamp() - (new \DateTimeImmutable($latest[3]))->getTimestamp() <= 150) {
                     $live = true;
+                    $inNow[] = (string) $who;
                 }
             }
             $room = null;
@@ -236,8 +238,9 @@ class FakeVideoClient implements VideoClient
                     $room = $r;
                 }
             }
-            $out[$ref] = new VideoCallSummary($ref, $room?->name, $first, $last, $room?->endedAt ?? null, $live && ($room?->endedAt ?? null) === null,
-                array_values(array_unique(array_map(fn ($p) => $p[1], $seen))));
+            $ended = ($room?->endedAt ?? null) !== null;
+            $out[$ref] = new VideoCallSummary($ref, $room?->name, $first, $last, $room?->endedAt ?? null, $live && ! $ended,
+                array_values(array_unique(array_map(fn ($p) => $p[1], $seen))), $ended ? [] : $inNow);
         }
 
         return $out;
