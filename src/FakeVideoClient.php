@@ -347,11 +347,13 @@ class FakeVideoClient implements VideoClient
     public function captured(string $callRef, string $text, array $extra = []): CallTranscript
     {
         $id = (string) (count($this->callTranscriptsById) + 1);
-
-        return $this->callTranscriptsById[$id] = CallTranscript::fromArray($extra + [
+        $t = CallTranscript::fromArray($extra + [
             'id' => $id, 'call_ref' => $callRef, 'source' => CallTranscript::CAPTURED, 'status' => 'ready', 'text' => $text,
             'created_at' => date(DATE_ATOM),
         ]);
+
+        // Kept under its own id, so a test that names one can find and update it.
+        return $this->callTranscriptsById[$t->id] = $t;
     }
 
     public function callTranscripts(string $callRef): array

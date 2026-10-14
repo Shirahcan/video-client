@@ -84,4 +84,13 @@ class CallLiveTest extends TestCase
         $this->assertSame([], $video->callTranscripts('call-1'));
         $this->assertCount(1, $video->callTranscripts('call-2'));
     }
+
+    public function test_a_captured_transcript_with_its_own_id_can_be_cleaned(): void
+    {
+        $video = new FakeVideoClient('mploynow');
+        $t = $video->captured('call-1', 'Host: hello', ['id' => 'tr-9']);
+
+        $this->assertSame('Tidy.', $video->saveCleanText($t->id, 'Tidy.')->cleanText);
+        $this->assertSame('Tidy.', $video->callTranscripts('call-1')[0]->cleanText);
+    }
 }
