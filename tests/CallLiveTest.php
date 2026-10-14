@@ -59,4 +59,18 @@ class CallLiveTest extends TestCase
         $this->assertSame(\Shirahcan\VideoClient\VideoVerdict::APART, $video->callVerdict('call-9', ['host-1'], ['cand-1'], $ends, true)->verdict);
         $this->assertSame(\Shirahcan\VideoClient\VideoVerdict::HELD, $video->callVerdict('call-9', ['host-1'], ['cand-1'], $ends)->verdict);
     }
+
+    public function test_a_client_that_cannot_be_made_reads_as_unknown(): void
+    {
+        $reported = [];
+        $live = new CallLive(function () {
+            throw new \RuntimeException('video-client: VIDEO_SERVICE_TRUST_KEY is not set.');
+        }, function (\Throwable $e) use (&$reported) {
+            $reported[] = $e;
+        });
+
+        $this->assertFalse($live->isLive('call-1'));
+        $this->assertSame([], $live->seen('call-1'));
+        $this->assertCount(1, $reported);
+    }
 }

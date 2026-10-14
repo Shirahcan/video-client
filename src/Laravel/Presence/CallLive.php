@@ -19,9 +19,13 @@ class CallLive
     /** @var array<string, VideoCallSummary|null> by call ref (null = the service could not say) */
     private array $summaries = [];
 
-    /** @param callable(\Throwable): void $report */
+    /**
+     * @param VideoClient|\Closure(): VideoClient $client resolved on first use, inside the error
+     *        handling: a box with no service configured reads every call as unknown, never fails
+     * @param callable(\Throwable): void $report
+     */
     public function __construct(
-        private readonly VideoClient $client,
+        private VideoClient|\Closure $client,
         private $report,
     ) {}
 
@@ -39,6 +43,9 @@ class CallLive
         }
 
         try {
+            if ($this->client instanceof \Closure) {
+                $this->client = ($this->client)();
+            }
             foreach ($this->client->callSummaries(array_keys($ask)) as $ref => $summary) {
                 $this->summaries[(string) $ref] = $summary;
             }
