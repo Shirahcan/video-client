@@ -499,6 +499,46 @@ class FakeVideoClient implements VideoClient
         ] + $link);
     }
 
+    /** Every join request, by id. @var array<string, JoinRequest> */
+    public array $joinRequestsById = [];
+
+    public function askToJoin(string $token, string $name): ?JoinRequest
+    {
+        $this->record('askToJoin', ['token' => '***', 'name' => $name]);
+        $link = $this->resolveJoinLink($token);
+        if ($link === null || ! $link->active) {
+            return null;
+        }
+        $id = 'jr-'.(count($this->joinRequestsById) + 1);
+
+        return $this->joinRequestsById[$id] = new JoinRequest($id, $link->callRef, trim($name), JoinRequest::WAITING, new \DateTimeImmutable());
+    }
+
+    public function joinRequest(string $id): ?JoinRequest
+    {
+        $this->record('joinRequest', compact('id'));
+
+        return $this->joinRequestsById[$id] ?? null;
+    }
+
+    public function joinRequests(string $callRef): array
+    {
+        $this->record('joinRequests', compact('callRef'));
+
+        return array_values(array_filter($this->joinRequestsById, fn (JoinRequest $r) => $r->callRef === $callRef && $r->status === JoinRequest::WAITING));
+    }
+
+    public function decideJoinRequest(string $id, bool $admit, ?string $actor = null): JoinRequest
+    {
+        $this->record('decideJoinRequest', compact('id', 'admit', 'actor'));
+        $r = $this->joinRequestsById[$id] ?? throw new Exceptions\RoomNotFound('No such join request for this product.', 'request_not_found', 404);
+        if ($r->status !== JoinRequest::WAITING) {
+            throw new Exceptions\VideoRequestRejected('This request was already answered or has expired.', 'request_settled', 409);
+        }
+
+        return $this->joinRequestsById[$id] = new JoinRequest($r->id, $r->callRef, $r->name, $admit ? JoinRequest::ADMITTED : JoinRequest::DECLINED, $r->createdAt, new \DateTimeImmutable());
+    }
+
     public function roomForCall(string $callRef): ?VideoRoom
     {
         $this->record('roomForCall', compact('callRef'));

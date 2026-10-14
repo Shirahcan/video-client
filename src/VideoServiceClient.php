@@ -285,6 +285,36 @@ class VideoServiceClient implements VideoClient
         return JoinLink::fromArray($this->send('POST', 'api/v1/calls/'.rawurlencode($callRef).'/join-links/import', array_filter($link, fn ($v) => $v !== null)));
     }
 
+    public function askToJoin(string $token, string $name): ?JoinRequest
+    {
+        try {
+            return JoinRequest::fromArray($this->send('POST', 'api/v1/join-requests', ['token' => $token, 'name' => $name]));
+        } catch (Exceptions\RoomNotFound) {
+            return null;
+        }
+    }
+
+    public function joinRequest(string $id): ?JoinRequest
+    {
+        try {
+            return JoinRequest::fromArray($this->send('GET', 'api/v1/join-requests/'.rawurlencode($id)));
+        } catch (Exceptions\RoomNotFound) {
+            return null;
+        }
+    }
+
+    public function joinRequests(string $callRef): array
+    {
+        $data = $this->send('GET', 'api/v1/calls/'.rawurlencode($callRef).'/join-requests');
+
+        return array_map(fn (array $r) => JoinRequest::fromArray($r), (array) ($data['requests'] ?? []));
+    }
+
+    public function decideJoinRequest(string $id, bool $admit, ?string $actor = null): JoinRequest
+    {
+        return JoinRequest::fromArray($this->send('POST', 'api/v1/join-requests/'.rawurlencode($id).'/decide', array_filter(['admit' => $admit, 'actor' => $actor], fn ($v) => $v !== null)));
+    }
+
     public function roomForCall(string $callRef): ?VideoRoom
     {
         try {

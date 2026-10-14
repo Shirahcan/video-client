@@ -177,6 +177,21 @@ interface VideoClient
     /** Move a link the product already emailed, with the same token (idempotent). */
     public function importJoinLink(string $callRef, array $link): JoinLink;
 
+    /**
+     * Ask to join by an active join link, under the name typed (plan M7j). Null when the link
+     * does not open a call any more.
+     */
+    public function askToJoin(string $token, string $name): ?JoinRequest;
+
+    /** Where a request stands; null when it is not this product's. */
+    public function joinRequest(string $id): ?JoinRequest;
+
+    /** @return array<int, JoinRequest> who is waiting on the call now, oldest first */
+    public function joinRequests(string $callRef): array;
+
+    /** The host's answer. Throws VideoRequestRejected when it was already answered or expired. */
+    public function decideJoinRequest(string $id, bool $admit, ?string $actor = null): JoinRequest;
+
     /** The call's room, asked for by the call; null while it has none. */
     public function roomForCall(string $callRef): ?VideoRoom;
 
