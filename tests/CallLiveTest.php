@@ -45,4 +45,18 @@ class CallLiveTest extends TestCase
         $this->assertSame([], $live->inNow('call-1'));
         $this->assertCount(1, $reported);
     }
+
+    public function test_the_fake_tells_apart_when_asked_together(): void
+    {
+        $video = new FakeVideoClient('mploynow');
+        $t = new \DateTimeImmutable('-3 hours');
+        $video->callPresence('call-9', 'cand-1', 'join', $t);
+        $video->callPresence('call-9', 'cand-1', 'leave', $t->modify('+5 minutes'));
+        $video->callPresence('call-9', 'host-1', 'join', $t->modify('+20 minutes'));
+        $video->callPresence('call-9', 'host-1', 'heartbeat', $t->modify('+30 minutes'));
+        $ends = $t->modify('+30 minutes');
+
+        $this->assertSame(\Shirahcan\VideoClient\VideoVerdict::APART, $video->callVerdict('call-9', ['host-1'], ['cand-1'], $ends, true)->verdict);
+        $this->assertSame(\Shirahcan\VideoClient\VideoVerdict::HELD, $video->callVerdict('call-9', ['host-1'], ['cand-1'], $ends)->verdict);
+    }
 }

@@ -186,13 +186,13 @@ class VideoServiceClient implements VideoClient
         return $out;
     }
 
-    public function callVerdict(string $callRef, array $hosts, array $guests, \DateTimeInterface $endsAt): VideoVerdict
+    public function callVerdict(string $callRef, array $hosts, array $guests, \DateTimeInterface $endsAt, bool $together = false): VideoVerdict
     {
         return VideoVerdict::fromArray($this->send('POST', 'api/v1/calls/'.rawurlencode($callRef).'/verdict', [
             'hosts' => array_values($hosts),
             'guests' => array_values($guests),
             'ends_at' => $endsAt->format(DATE_ATOM),
-        ]));
+        ] + ($together ? ['together' => true] : [])));
     }
 
     public function transcripts(string $roomName): array

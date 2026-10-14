@@ -16,6 +16,9 @@ final class VideoVerdict
 
     public const NOBODY = 'nobody';
 
+    /** Both sides came but were never in the call at the same time (only when asked `together`). */
+    public const APART = 'apart';
+
     public const NOT_YET = 'not_yet';
 
     public const UNKNOWN = 'unknown';

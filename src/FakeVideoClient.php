@@ -246,9 +246,9 @@ class FakeVideoClient implements VideoClient
         return $out;
     }
 
-    public function callVerdict(string $callRef, array $hosts, array $guests, \DateTimeInterface $endsAt): VideoVerdict
+    public function callVerdict(string $callRef, array $hosts, array $guests, \DateTimeInterface $endsAt, bool $together = false): VideoVerdict
     {
-        $this->record('callVerdict', compact('callRef', 'hosts', 'guests'));
+        $this->record('callVerdict', compact('callRef', 'hosts', 'guests', 'together'));
         if (isset($this->callVerdicts[$callRef])) {
             return $this->callVerdicts[$callRef];
         }
@@ -259,12 +259,37 @@ class FakeVideoClient implements VideoClient
         $hostCame = array_intersect($hosts, $present) !== [];
         $guestCame = $guests === [] ? $hostCame : array_intersect($guests, $present) !== [];
 
+        if ($together && $hostCame && $guestCame && $guests !== [] && ! $this->overlapped($callRef, $hosts, $guests)) {
+            return new VideoVerdict(VideoVerdict::APART, $present);
+        }
+
         return new VideoVerdict(match (true) {
             $hostCame && $guestCame => VideoVerdict::HELD,
             $hostCame => VideoVerdict::GUEST_ABSENT,
             $guestCame => VideoVerdict::HOST_ABSENT,
             default => VideoVerdict::NOBODY,
         }, $present);
+    }
+
+    /** Whether a host and a guest were in the call at once, from the signals (each person's first to last). */
+    private function overlapped(string $callRef, array $hosts, array $guests): bool
+    {
+        $span = function (string $who) use ($callRef): ?array {
+            $at = array_map(fn ($p) => (new \DateTimeImmutable($p[3]))->getTimestamp(),
+                array_filter($this->callPresence, fn ($p) => $p[0] === $callRef && $p[1] === $who));
+
+            return $at === [] ? null : [min($at), max($at)];
+        };
+        foreach ($hosts as $h) {
+            foreach ($guests as $g) {
+                [$a, $b] = [$span((string) $h), $span((string) $g)];
+                if ($a !== null && $b !== null && $a[0] < $b[1] && $b[0] < $a[1]) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     public function attendance(string $roomName): VideoAttendance

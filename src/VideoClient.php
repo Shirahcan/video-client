@@ -97,12 +97,13 @@ interface VideoClient
 
     /**
      * Was the call held, by its ref: the room's verdict when it has one, else judged on the ref's
-     * presence once `$endsAt` plus the after-window has passed. The same rule either way.
+     * presence once `$endsAt` plus the after-window has passed. The same rule either way. With
+     * `$together`, a call both sides came to but never at the same time is VideoVerdict::APART.
      *
      * @param array<int, string> $hosts
      * @param array<int, string> $guests
      */
-    public function callVerdict(string $callRef, array $hosts, array $guests, \DateTimeInterface $endsAt): VideoVerdict;
+    public function callVerdict(string $callRef, array $hosts, array $guests, \DateTimeInterface $endsAt, bool $together = false): VideoVerdict;
 
     /** @return array<int, VideoTranscript> */
     public function transcripts(string $roomName): array;
