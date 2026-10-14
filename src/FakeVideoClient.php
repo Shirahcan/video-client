@@ -596,6 +596,20 @@ class FakeVideoClient implements VideoClient
         return ['audited' => count($this->rooms), 'findings' => []];
     }
 
+    public function deleteTranscripts(string $callRef): int
+    {
+        $this->record('deleteTranscripts', [$callRef]);
+        $n = 0;
+        foreach ($this->callTranscriptsById as $id => $t) {
+            if ($t->callRef === $callRef) {
+                unset($this->callTranscriptsById[$id]);
+                $n++;
+            }
+        }
+
+        return $n;
+    }
+
     public function deleteCall(string $callRef): array
     {
         $this->record('deleteCall', [$callRef]);

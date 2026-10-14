@@ -332,6 +332,11 @@ class VideoServiceClient implements VideoClient
         return $this->send('GET', 'api/v1/rooms/health');
     }
 
+    public function deleteTranscripts(string $callRef): int
+    {
+        return (int) ($this->send('DELETE', 'api/v1/calls/'.rawurlencode($callRef).'/transcripts')['deleted'] ?? 0);
+    }
+
     public function deleteCall(string $callRef): array
     {
         return array_map('intval', (array) ($this->send('DELETE', 'api/v1/calls/'.rawurlencode($callRef))['removed'] ?? []));

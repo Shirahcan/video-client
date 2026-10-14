@@ -132,6 +132,9 @@ interface VideoClient
     /** Save (or clear, with null) the product's cleaned text on a kept transcript. */
     public function saveCleanText(string $transcriptId, ?string $cleanText): CallTranscript;
 
+    /** Delete every transcript of a call, here and on Daily (the call itself stays). Returns how many. */
+    public function deleteTranscripts(string $callRef): int;
+
     /**
      * Report that somebody could not get into a call. `$issue`: category (call|device), kind,
      * and optionally device, outcome, browser, message, person, link_id, occurred_at.

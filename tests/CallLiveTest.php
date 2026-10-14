@@ -73,4 +73,15 @@ class CallLiveTest extends TestCase
         $this->assertSame([], $live->seen('call-1'));
         $this->assertCount(1, $reported);
     }
+
+    public function test_the_fake_deletes_only_that_calls_transcripts(): void
+    {
+        $video = new FakeVideoClient('mploynow');
+        $video->captured('call-1', 'Host: hello');
+        $video->captured('call-2', 'Host: hi');
+
+        $this->assertSame(1, $video->deleteTranscripts('call-1'));
+        $this->assertSame([], $video->callTranscripts('call-1'));
+        $this->assertCount(1, $video->callTranscripts('call-2'));
+    }
 }
