@@ -46,6 +46,23 @@ class CallLiveTest extends TestCase
         $this->assertCount(1, $reported);
     }
 
+    public function test_the_fake_judges_a_call_a_host_ended_at_once_as_the_service_does(): void
+    {
+        $video = new FakeVideoClient('mploynow');
+        $starts = new \DateTimeImmutable('-10 minutes');
+        $ends = $starts->modify('+30 minutes');
+        $room = $video->createRoom('call-7', $starts, $ends);
+        $video->callPresence('call-7', 'host-1', 'join', $starts);
+        $video->callPresence('call-7', 'cand-1', 'join', $starts);
+
+        // Twenty booked minutes left: not judged yet.
+        $this->assertSame(\Shirahcan\VideoClient\VideoVerdict::NOT_YET, $video->callVerdict('call-7', ['host-1'], ['cand-1'], $ends)->verdict);
+
+        // A host ended it: closed now, judged now (video-service CallState: ended = closed).
+        $video->endRoom($room->name, 'host-1');
+        $this->assertSame(\Shirahcan\VideoClient\VideoVerdict::HELD, $video->callVerdict('call-7', ['host-1'], ['cand-1'], $ends)->verdict);
+    }
+
     public function test_the_fake_tells_apart_when_asked_together(): void
     {
         $video = new FakeVideoClient('mploynow');

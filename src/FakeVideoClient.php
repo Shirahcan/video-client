@@ -252,7 +252,15 @@ class FakeVideoClient implements VideoClient
         if (isset($this->callVerdicts[$callRef])) {
             return $this->callVerdicts[$callRef];
         }
-        if ((new \DateTimeImmutable())->getTimestamp() < $endsAt->getTimestamp() + 30 * 60) {
+        // The service's rule (video-service CallState): a call whose room a host ENDED is closed now
+        // and judged at once; otherwise it is judged once its room closes (end + after-window).
+        $ended = false;
+        foreach ($this->rooms as $r) {
+            if ($r->externalRef === $callRef && $r->isEnded()) {
+                $ended = true;
+            }
+        }
+        if (! $ended && (new \DateTimeImmutable())->getTimestamp() < $endsAt->getTimestamp() + 30 * 60) {
             return new VideoVerdict(VideoVerdict::NOT_YET);
         }
         $present = $this->callSummaries([$callRef])[$callRef]->present;
