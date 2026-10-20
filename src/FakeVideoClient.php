@@ -215,7 +215,15 @@ class FakeVideoClient implements VideoClient
         foreach (array_values(array_unique(array_map('strval', $callRefs))) as $ref) {
             $rows = array_values(array_filter($this->callPresence, fn ($p) => $p[0] === $ref));
             if ($rows === []) {
-                $out[$ref] = VideoCallSummary::none($ref);
+                // As the service: a call nobody has joined still names its room when it has one.
+                $named = null;
+                foreach ($this->rooms as $r) {
+                    if ($r->externalRef === $ref) {
+                        $named = $r;
+                    }
+                }
+                $out[$ref] = $named === null ? VideoCallSummary::none($ref)
+                    : new VideoCallSummary($ref, $named->name, null, null, $named->endedAt ?? null, false, [], []);
 
                 continue;
             }

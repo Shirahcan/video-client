@@ -75,4 +75,17 @@ class CallRoomsTest extends TestCase
         $this->assertNull($rooms->name('call-3'));
         $this->assertSame(1, $reported);
     }
+
+    public function test_a_list_asks_for_its_rooms_once(): void
+    {
+        $video = new FakeVideoClient('mploynow');
+        $a = $video->createRoom('call-a', new \DateTimeImmutable('+1 hour'), new \DateTimeImmutable('+2 hours'));
+        $b = $video->createRoom('call-b', new \DateTimeImmutable('+1 hour'), new \DateTimeImmutable('+2 hours'));
+        $rooms = new CallRooms($video, $this->cache(), fn () => null);
+
+        $rooms->preload(['call-a', 'call-b', 'call-none', null]);
+        $this->assertSame([$a->name, $b->name, null], [$rooms->name('call-a'), $rooms->name('call-b'), $video->roomForCall('call-none')?->name]);
+        $this->assertSame(1, $video->callCount('callSummaries'));
+        $this->assertSame(1, $video->callCount('roomForCall'), 'only the test itself asked one by one');
+    }
 }

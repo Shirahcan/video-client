@@ -44,6 +44,35 @@ class CallRooms
         return $this->remembered($ref, 'call_room_addr:', fn (VideoRoom $room) => $room->address());
     }
 
+    /**
+     * A whole list's rooms in one ask (the service's call summaries name each call's room), so a
+     * calendar of a hundred calls costs one call to the service, not a hundred. Refs already
+     * known are skipped; a call with no room stays unknown (asked again when it gets one).
+     *
+     * @param iterable<string|null> $refs
+     */
+    public function preload(iterable $refs): void
+    {
+        $ask = [];
+        foreach ($refs as $ref) {
+            if (is_string($ref) && $ref !== '' && ! is_string($this->cache->get('call_room:'.$ref))) {
+                $ask[$ref] = true;
+            }
+        }
+        foreach (array_chunk(array_keys($ask), 200) as $chunk) {
+            try {
+                foreach ($this->client()->callSummaries($chunk) as $ref => $summary) {
+                    if (is_string($summary->room) && $summary->room !== '') {
+                        $this->cache->set('call_room:'.$ref, $summary->room, self::TTL_SECONDS);
+                        $this->cache->set('room_call:'.$summary->room, (string) $ref, self::TTL_SECONDS);
+                    }
+                }
+            } catch (\Throwable $e) {
+                ($this->report)($e);
+            }
+        }
+    }
+
     public function exists(?string $ref): bool
     {
         return $this->name($ref) !== null;
