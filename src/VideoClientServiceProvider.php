@@ -45,6 +45,13 @@ class VideoClientServiceProvider extends ServiceProvider
             fn () => $app->make(VideoClient::class),
             fn (\Throwable $e) => report($e),
         ));
+        // A call's room by its ref (name, address, close), asked of the service and cached: products
+        // keep no room name or address of their own.
+        $this->app->singleton(Laravel\Rooms\CallRooms::class, fn ($app) => new Laravel\Rooms\CallRooms(
+            fn () => $app->make(VideoClient::class),
+            $app->make('cache.store'),
+            fn (\Throwable $e) => report($e),
+        ));
         $this->app->bind(Laravel\Presence\RelayPresence::class, fn ($app) => new Laravel\Presence\RelayPresence(
             $app->make(VideoClient::class),
             fn (object $event) => $app['events']->dispatch($event),
