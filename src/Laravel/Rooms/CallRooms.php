@@ -23,6 +23,16 @@ class CallRooms
     private const CLOSE_TTL_SECONDS = 300;
 
     /**
+     * How long a list's "this call has no room" is believed. Only preload() records it (one ask
+     * answered for many calls); remember() overrides it the moment a room is made, so it can only
+     * hide a room made without remember(), and only for this long.
+     */
+    private const NO_ROOM_TTL_SECONDS = 60;
+
+    /** The cached answer "no room", distinct from "not asked" (null). */
+    private const NO_ROOM = '';
+
+    /**
      * @param VideoClient|\Closure(): VideoClient $client resolved on first use, inside the error handling
      * @param callable(\Throwable): void $report
      */
@@ -47,7 +57,8 @@ class CallRooms
     /**
      * A whole list's rooms in one ask (the service's call summaries name each call's room), so a
      * calendar of a hundred calls costs one call to the service, not a hundred. Refs already
-     * known are skipped; a call with no room stays unknown (asked again when it gets one).
+     * known are skipped; a call with no room is believed roomless for NO_ROOM_TTL_SECONDS (a room
+     * made since is found at once when it was remember()ed, as every product does on making one).
      *
      * @param iterable<string|null> $refs
      */
@@ -61,10 +72,19 @@ class CallRooms
         }
         foreach (array_chunk(array_keys($ask), 200) as $chunk) {
             try {
+                $named = [];
                 foreach ($this->client()->callSummaries($chunk) as $ref => $summary) {
                     if (is_string($summary->room) && $summary->room !== '') {
                         $this->cache->set('call_room:'.$ref, $summary->room, self::TTL_SECONDS);
                         $this->cache->set('room_call:'.$summary->room, (string) $ref, self::TTL_SECONDS);
+                        $named[(string) $ref] = true;
+                    }
+                }
+                // The rest have no room: said once for the list, so a page of calls with no video
+                // (in person, by phone, not made yet) does not ask again row by row.
+                foreach ($chunk as $ref) {
+                    if (! isset($named[$ref])) {
+                        $this->cache->set('call_room:'.$ref, self::NO_ROOM, self::NO_ROOM_TTL_SECONDS);
                     }
                 }
             } catch (\Throwable $e) {
@@ -165,6 +185,9 @@ class CallRooms
         $cached = $this->cache->get($prefix.$ref);
         if (is_string($cached) && $cached !== '') {
             return $cached;
+        }
+        if ($this->cache->get('call_room:'.$ref) === self::NO_ROOM) {
+            return null;   // a list just said this call has no room (preload)
         }
         try {
             $room = $this->client()->roomForCall($ref);

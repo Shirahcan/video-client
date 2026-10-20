@@ -88,4 +88,21 @@ class CallRoomsTest extends TestCase
         $this->assertSame(1, $video->callCount('callSummaries'));
         $this->assertSame(1, $video->callCount('roomForCall'), 'only the test itself asked one by one');
     }
+
+    public function test_a_list_says_once_which_calls_have_no_room_and_a_room_made_since_is_found(): void
+    {
+        $video = new FakeVideoClient('mploynow');
+        $rooms = new CallRooms($video, $this->cache(), fn () => null);
+
+        $rooms->preload(['call-x', 'call-y']);
+        $this->assertNull($rooms->name('call-x'));
+        $this->assertNull($rooms->address('call-y'));
+        $rooms->preload(['call-x', 'call-y']);
+        $this->assertSame(0, $video->callCount('roomForCall'), 'a page of calls with no video asks nothing row by row');
+        $this->assertSame(1, $video->callCount('callSummaries'), 'nor again for the same list');
+
+        $made = $video->createRoom('call-x', new \DateTimeImmutable('+1 hour'), new \DateTimeImmutable('+2 hours'));
+        $rooms->remember('call-x', $made->name, $made->address());
+        $this->assertSame($made->name, $rooms->name('call-x'), 'remember() overrides the list\'s "no room"');
+    }
 }
