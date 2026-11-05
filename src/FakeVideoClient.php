@@ -346,6 +346,37 @@ class FakeVideoClient implements VideoClient
             ?? new VideoTranscriptStatus(VideoTranscriptStatus::NOT_STARTED, true, null, null, [], 60);
     }
 
+    /** What liveTranscription() answers, by room name (default: open, nobody in, not running). @var array<string, VideoLiveTranscription> */
+    public array $liveTranscriptionByRoom = [];
+
+    public function liveTranscription(string $roomName): VideoLiveTranscription
+    {
+        $this->record('liveTranscription', compact('roomName'));
+        if (! isset($this->rooms[$roomName])) {
+            throw new RoomNotFound('No such room for this product.', 'room_not_found', 404);
+        }
+
+        return $this->liveTranscriptionByRoom[$roomName] ?? new VideoLiveTranscription(true, false, null, null, 0, [], true);
+    }
+
+    /** As the service: refused for an empty or closed room, unchanged when running, else running. */
+    public function startTranscription(string $roomName): VideoLiveTranscription
+    {
+        $live = $this->liveTranscription($roomName);
+        $this->record('startTranscription', compact('roomName'));
+        if ($live->running) {
+            return $live;
+        }
+        if (! $live->open) {
+            throw new Exceptions\VideoRequestRejected('This call has closed, so there is nothing to transcribe now.', 'room_closed', 409);
+        }
+        if ($live->present === []) {
+            throw new Exceptions\VideoRequestRejected('Nobody is in the call yet. Transcription starts as soon as someone joins.', 'nobody_in_call', 409);
+        }
+
+        return $this->liveTranscriptionByRoom[$roomName] = new VideoLiveTranscription(true, true, date(DATE_ATOM), null, $live->attempts + 1, $live->present, true);
+    }
+
     public function transcript(string $transcriptId): VideoTranscript
     {
         $this->record('transcript', compact('transcriptId'));

@@ -48,6 +48,16 @@ interface VideoClient
     /** Where this call's transcript is (not transcribed, in the call, preparing, ready, overdue). */
     public function transcriptStatus(string $roomName): VideoTranscriptStatus;
 
+    /** Whether the call is being transcribed NOW, and who is in it (0.24.0). */
+    public function liveTranscription(string $roomName): VideoLiveTranscription;
+
+    /**
+     * A person (an admin, the host) starts the call's transcription now (0.24.0). Throws
+     * VideoRequestRejected with the service's reason (`nobody_in_call`, `room_closed`,
+     * `daily_rejected`) when it cannot; a running transcription is returned unchanged.
+     */
+    public function startTranscription(string $roomName): VideoLiveTranscription;
+
     /** Idempotent: deleting an already-deleted room succeeds. */
     public function deleteRoom(string $name): void;
 

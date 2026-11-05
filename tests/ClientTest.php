@@ -67,6 +67,52 @@ class ClientTest extends TestCase
         $this->assertSame(['rebuilt on shirah'], $result['actions']);
     }
 
+    public function test_live_transcription_is_read_and_started_on_the_room(): void
+    {
+        $live = ['data' => ['stores' => true, 'running' => false, 'present' => ['u-1'], 'open' => true, 'attempts' => 2]];
+        $client = $this->client($this->json(200, $live), $this->json(200, ['data' => ['running' => true, 'present' => ['u-1'], 'open' => true] + $live['data']]));
+
+        $now = $client->liveTranscription('r');
+        $started = $client->startTranscription('r');
+
+        $this->assertTrue($now->canStart());
+        $this->assertSame(['u-1'], $now->present);
+        $this->assertTrue($started->running);
+        $this->assertFalse($started->canStart());
+        $this->assertSame('GET', $this->history[0]['request']->getMethod());
+        $this->assertStringEndsWith('/api/v1/rooms/r/transcription', (string) $this->history[0]['request']->getUri());
+        $this->assertSame('POST', $this->history[1]['request']->getMethod());
+        $this->assertStringEndsWith('/api/v1/rooms/r/transcription/start', (string) $this->history[1]['request']->getUri());
+    }
+
+    public function test_a_refused_start_carries_the_service_reason(): void
+    {
+        $client = $this->client($this->json(409, ['success' => false, 'message' => 'Nobody is in the call yet.', 'error' => 'nobody_in_call']));
+
+        try {
+            $client->startTranscription('r');
+            $this->fail('expected a refusal');
+        } catch (\Shirahcan\VideoClient\Exceptions\VideoRequestRejected $e) {
+            $this->assertSame('nobody_in_call', $e->errorCode);
+        }
+    }
+
+    public function test_the_fake_starts_only_a_room_somebody_is_in(): void
+    {
+        $fake = new FakeVideoClient('portify');
+        $room = $fake->createRoom('m-1', new \DateTimeImmutable('+1 hour'), new \DateTimeImmutable('+2 hours'));
+
+        try {
+            $fake->startTranscription($room->name);
+            $this->fail('an empty room cannot start');
+        } catch (\Shirahcan\VideoClient\Exceptions\VideoRequestRejected) {
+        }
+
+        $fake->liveTranscriptionByRoom[$room->name] = new \Shirahcan\VideoClient\VideoLiveTranscription(true, false, null, null, 0, ['u-1'], true);
+        $this->assertTrue($fake->startTranscription($room->name)->running);
+        $this->assertTrue($fake->liveTranscription($room->name)->running);
+    }
+
     public function test_a_token_may_ask_for_the_call_to_be_transcribed_whoever_joins(): void
     {
         $tokenBody = ['data' => ['token' => 'T', 'url' => 'https://shirah.daily.co/r?t=T', 'expires_at' => 'x']];
