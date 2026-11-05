@@ -121,7 +121,7 @@ class VideoServiceClient implements VideoClient
         ], fn ($v) => $v !== null)));
     }
 
-    public function token(string $roomName, ?string $participantId, string $displayName, bool $isOwner, ?\DateTimeInterface $expiresAt = null, bool $autoStartTranscription = false, bool $hidden = false): VideoToken
+    public function token(string $roomName, ?string $participantId, string $displayName, bool $isOwner, ?\DateTimeInterface $expiresAt = null, bool $autoStartTranscription = false, bool $hidden = false, bool $transcribeCall = false): VideoToken
     {
         return VideoToken::fromArray($this->send('POST', 'api/v1/rooms/'.rawurlencode($roomName).'/tokens', array_filter([
             'participant_id' => $participantId,
@@ -130,6 +130,7 @@ class VideoServiceClient implements VideoClient
             'expires_at' => $expiresAt?->format(DATE_ATOM),
             'auto_start_transcription' => $autoStartTranscription ?: null,
             'hidden' => $hidden ?: null,
+            'transcribe_call' => $transcribeCall ?: null,
         ], fn ($v) => $v !== null)));
     }
 

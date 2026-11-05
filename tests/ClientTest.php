@@ -67,6 +67,18 @@ class ClientTest extends TestCase
         $this->assertSame(['rebuilt on shirah'], $result['actions']);
     }
 
+    public function test_a_token_may_ask_for_the_call_to_be_transcribed_whoever_joins(): void
+    {
+        $tokenBody = ['data' => ['token' => 'T', 'url' => 'https://shirah.daily.co/r?t=T', 'expires_at' => 'x']];
+        $client = $this->client($this->json(201, $tokenBody), $this->json(201, $tokenBody));
+
+        $client->token('r', 'u-1', 'Maria', false, null, false, false, true);
+        $client->token('r', 'u-2', 'Ana', false);
+
+        $this->assertTrue(json_decode((string) $this->history[0]['request']->getBody(), true)['transcribe_call']);
+        $this->assertArrayNotHasKey('transcribe_call', json_decode((string) $this->history[1]['request']->getBody(), true), 'omitted unless asked');
+    }
+
     public function test_the_token_carries_the_url_and_the_call_state(): void
     {
         $token = $this->client($this->json(201, ['data' => [
