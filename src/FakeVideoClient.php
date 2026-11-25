@@ -207,6 +207,19 @@ class FakeVideoClient implements VideoClient
         $this->callPresence[] = [$callRef, $participantId, $kind, ($at ?? new \DateTimeImmutable())->format(DATE_ATOM)];
     }
 
+    /** What the next device signal answers, set by a test. @var array{elsewhere: ?array{since: string}, superseded: bool} */
+    public array $deviceAnswer = ['elsewhere' => null, 'superseded' => false];
+
+    public function callPresenceFromDevice(string $callRef, string $participantId, string $kind, string $deviceId, bool $takeOver = false, ?\DateTimeInterface $at = null): array
+    {
+        $this->record('callPresenceFromDevice', compact('callRef', 'participantId', 'kind', 'deviceId', 'takeOver'));
+        if ($kind !== 'check') {
+            $this->callPresence[] = [$callRef, $participantId, $kind, ($at ?? new \DateTimeImmutable())->format(DATE_ATOM)];
+        }
+
+        return $this->deviceAnswer;
+    }
+
     public function callSummaries(array $callRefs): array
     {
         $this->record('callSummaries', compact('callRefs'));

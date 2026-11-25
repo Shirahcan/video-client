@@ -169,6 +169,24 @@ class VideoServiceClient implements VideoClient
         ], fn ($v) => $v !== null));
     }
 
+    public function callPresenceFromDevice(string $callRef, string $participantId, string $kind, string $deviceId, bool $takeOver = false, ?\DateTimeInterface $at = null): array
+    {
+        $data = $this->send('POST', 'api/v1/calls/'.rawurlencode($callRef).'/presence', array_filter([
+            'participant_id' => $participantId,
+            'kind' => $kind,
+            'device_id' => $deviceId,
+            'take_over' => $takeOver ?: null,
+            'at' => $at?->format(DATE_ATOM),
+        ], fn ($v) => $v !== null));
+
+        $elsewhere = $data['elsewhere'] ?? null;
+
+        return [
+            'elsewhere' => is_array($elsewhere) && isset($elsewhere['since']) ? ['since' => (string) $elsewhere['since']] : null,
+            'superseded' => (bool) ($data['superseded'] ?? false),
+        ];
+    }
+
     public function callSummaries(array $callRefs): array
     {
         $refs = array_values(array_unique(array_filter(array_map('strval', $callRefs), fn ($r) => $r !== '')));

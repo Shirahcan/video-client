@@ -102,6 +102,16 @@ interface VideoClient
     public function callPresence(string $callRef, string $participantId, string $kind = 'heartbeat', ?\DateTimeInterface $at = null): void;
 
     /**
+     * The same signal from ONE device (call continuity), answering what that device should know:
+     * `elsewhere` (this person is in the call on another device, since when) and `superseded` (another
+     * device took the call from this one). `check` records nothing; `$takeOver` on a join moves the call here.
+     *
+     * @param 'join'|'heartbeat'|'leave'|'check' $kind
+     * @return array{elsewhere: ?array{since: string}, superseded: bool}
+     */
+    public function callPresenceFromDevice(string $callRef, string $participantId, string $kind, string $deviceId, bool $takeOver = false, ?\DateTimeInterface $at = null): array;
+
+    /**
      * What the service saw of each call: first joined, last seen, ended, live now, who.
      *
      * @param array<int, string> $callRefs

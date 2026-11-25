@@ -19,12 +19,25 @@ class RelayPresence
         private $dispatch,
     ) {}
 
-    public function relay(PresenceParticipant $who, string $kind, ?\DateTimeImmutable $at = null): void
+    /**
+     * With a `$deviceId` (call continuity) the answer says whether this person is in the call on another
+     * device and whether another device took the call from this one. A `check` records nothing and tells
+     * the product nothing: the page is only asking before it joins.
+     *
+     * @return array{elsewhere: ?array{since: string}, superseded: bool}
+     */
+    public function relay(PresenceParticipant $who, string $kind, ?\DateTimeImmutable $at = null, ?string $deviceId = null, bool $takeOver = false): array
     {
         $at ??= new \DateTimeImmutable();
+        $answer = ['elsewhere' => null, 'superseded' => false];
+        $deviceId = $deviceId !== null && trim($deviceId) !== '' ? trim($deviceId) : null;
 
         try {
-            if ($who->callRef !== null) {
+            if ($who->callRef !== null && $deviceId !== null) {
+                $answer = $this->client->callPresenceFromDevice($who->callRef, $who->participantId, $kind, $deviceId, $takeOver, $at);
+            } elseif ($kind === 'check') {
+                // Nothing to ask without both a device and a call ref.
+            } elseif ($who->callRef !== null) {
                 // By the call's ref: a call with no room is witnessed too, and a leave is kept.
                 $this->client->callPresence($who->callRef, $who->participantId, $kind, $at);
             } elseif ($who->room !== null && $kind !== 'leave') {
@@ -36,6 +49,10 @@ class RelayPresence
             }
         }
 
-        ($this->dispatch)(new CallPresenceReceived($who, $kind, $at));
+        if ($kind !== 'check') {
+            ($this->dispatch)(new CallPresenceReceived($who, $kind, $at));
+        }
+
+        return $answer;
     }
 }

@@ -70,4 +70,30 @@ class RelayPresenceTest extends TestCase
         $this->assertFalse($this->video->callSummaries(["booking-9"])["booking-9"]->live, "left");
         $this->assertCount(2, $this->events);
     }
+
+    /** Call continuity: a device's signal answers what that device should know; a check tells the product nothing. */
+    public function test_a_device_signal_returns_the_services_answer_and_a_check_is_not_presence(): void
+    {
+        $this->video = new FakeVideoClient('portify');
+        $this->video->deviceAnswer = ['elsewhere' => ['since' => '2026-11-25T15:02:00+00:00'], 'superseded' => false];
+        $who = new PresenceParticipant('m-1', 'u-1', null, [], 'call-ref-1');
+
+        $answer = $this->relay()->relay($who, 'check', null, 'phone');
+        $this->assertSame('2026-11-25T15:02:00+00:00', $answer['elsewhere']['since']);
+        $this->assertSame([], $this->events, 'a check is a question, not presence');
+        $this->assertSame([], $this->video->callPresence);
+
+        $this->relay()->relay($who, 'join', null, 'phone', true);
+        $this->assertCount(1, $this->events);
+        $this->assertCount(1, $this->video->callPresence);
+    }
+
+    public function test_without_a_device_nothing_changes(): void
+    {
+        $this->video = new FakeVideoClient('portify');
+        $who = new PresenceParticipant('m-1', 'u-1', null, [], 'call-ref-1');
+
+        $this->assertSame(['elsewhere' => null, 'superseded' => false], $this->relay()->relay($who, 'join'));
+        $this->assertSame('join', $this->video->callPresence[0][2]);
+    }
 }

@@ -27,15 +27,20 @@ class PresenceController extends Controller
             throw new RuntimeException("video-client: {$class} is not a PresenceAccess.");
         }
 
-        $data = $request->validate(['kind' => ['required', 'in:join,heartbeat,leave']]);
+        $data = $request->validate([
+            'kind' => ['required', 'in:join,heartbeat,leave,check'],
+            // Call continuity: a random id per browser, and "move the call here" on a join.
+            'device_id' => ['nullable', 'string', 'max:64'],
+            'take_over' => ['sometimes', 'boolean'],
+        ]);
 
         $who = $access->participant($request, $meeting);
         if ($who === null) {
             return response()->json(['message' => 'Meeting not found.'], 404);
         }
 
-        $relay->relay($who, $data['kind']);
+        $answer = $relay->relay($who, $data['kind'], null, $data['device_id'] ?? null, (bool) ($data['take_over'] ?? false));
 
-        return response()->json(['data' => ['recorded' => true]]);
+        return response()->json(['data' => ['recorded' => $data['kind'] !== 'check'] + $answer]);
     }
 }
