@@ -41,6 +41,7 @@ class VideoServiceClient implements VideoClient
             'max_participants' => $options['max_participants'] ?? null,
             'transcription' => $options['transcription'] ?? null,
             'knocking' => $options['knocking'] ?? null,
+            'pip_ui' => $options['pip_ui'] ?? null,
         ], fn ($v) => $v !== null)));
     }
 
@@ -121,7 +122,7 @@ class VideoServiceClient implements VideoClient
         ], fn ($v) => $v !== null)));
     }
 
-    public function token(string $roomName, ?string $participantId, string $displayName, bool $isOwner, ?\DateTimeInterface $expiresAt = null, bool $autoStartTranscription = false, bool $hidden = false, bool $transcribeCall = false): VideoToken
+    public function token(string $roomName, ?string $participantId, string $displayName, bool $isOwner, ?\DateTimeInterface $expiresAt = null, bool $autoStartTranscription = false, bool $hidden = false, bool $transcribeCall = false, ?bool $pipUi = null): VideoToken
     {
         return VideoToken::fromArray($this->send('POST', 'api/v1/rooms/'.rawurlencode($roomName).'/tokens', array_filter([
             'participant_id' => $participantId,
@@ -131,6 +132,7 @@ class VideoServiceClient implements VideoClient
             'auto_start_transcription' => $autoStartTranscription ?: null,
             'hidden' => $hidden ?: null,
             'transcribe_call' => $transcribeCall ?: null,
+            'pip_ui' => $pipUi,
         ], fn ($v) => $v !== null)));
     }
 

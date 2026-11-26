@@ -68,8 +68,10 @@ interface VideoClient
      * The ONLY way to get a joinable URL: always carries its token. `$transcribeCall` says this
      * CALL is to be transcribed whoever joins (any participant's token may carry it): the service
      * then starts transcription on the first join instead of waiting for the host (0.23.0).
+     * `$pipUi`: show (true) or hide (false) Daily Prebuilt's float button in the room; null leaves
+     * the room as it is. A room property, applied by the service only when it differs (0.26.0).
      */
-    public function token(string $roomName, ?string $participantId, string $displayName, bool $isOwner, ?\DateTimeInterface $expiresAt = null, bool $autoStartTranscription = false, bool $hidden = false, bool $transcribeCall = false): VideoToken;
+    public function token(string $roomName, ?string $participantId, string $displayName, bool $isOwner, ?\DateTimeInterface $expiresAt = null, bool $autoStartTranscription = false, bool $hidden = false, bool $transcribeCall = false, ?bool $pipUi = null): VideoToken;
 
     /** The call-state contract (V16). No Daily call behind it: safe to poll. */
     public function state(string $roomName): VideoCallState;

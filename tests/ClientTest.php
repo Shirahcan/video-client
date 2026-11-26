@@ -125,6 +125,20 @@ class ClientTest extends TestCase
         $this->assertArrayNotHasKey('transcribe_call', json_decode((string) $this->history[1]['request']->getBody(), true), 'omitted unless asked');
     }
 
+    public function test_a_token_carries_the_float_button_word_only_when_given(): void
+    {
+        $tokenBody = ['data' => ['token' => 'T', 'url' => 'https://shirah.daily.co/r?t=T', 'expires_at' => 'x']];
+        $client = $this->client($this->json(201, $tokenBody), $this->json(201, $tokenBody), $this->json(201, $tokenBody));
+
+        $client->token('r', 'u-1', 'Maria', false, null, false, false, false, true);
+        $client->token('r', 'u-1', 'Maria', false, null, false, false, false, false);
+        $client->token('r', 'u-2', 'Ana', false);
+
+        $this->assertTrue(json_decode((string) $this->history[0]['request']->getBody(), true)['pip_ui']);
+        $this->assertFalse(json_decode((string) $this->history[1]['request']->getBody(), true)['pip_ui'], 'false is sent: it turns the button off');
+        $this->assertArrayNotHasKey('pip_ui', json_decode((string) $this->history[2]['request']->getBody(), true), 'omitted unless given');
+    }
+
     public function test_the_token_carries_the_url_and_the_call_state(): void
     {
         $token = $this->client($this->json(201, ['data' => [

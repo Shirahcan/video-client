@@ -133,9 +133,9 @@ class FakeVideoClient implements VideoClient
         return ['ended' => true, 'reason' => 'idle'];
     }
 
-    public function token(string $roomName, ?string $participantId, string $displayName, bool $isOwner, ?\DateTimeInterface $expiresAt = null, bool $autoStartTranscription = false, bool $hidden = false, bool $transcribeCall = false): VideoToken
+    public function token(string $roomName, ?string $participantId, string $displayName, bool $isOwner, ?\DateTimeInterface $expiresAt = null, bool $autoStartTranscription = false, bool $hidden = false, bool $transcribeCall = false, ?bool $pipUi = null): VideoToken
     {
-        $this->record('token', compact('roomName', 'participantId', 'displayName', 'isOwner', 'expiresAt', 'autoStartTranscription', 'hidden', 'transcribeCall'));
+        $this->record('token', compact('roomName', 'participantId', 'displayName', 'isOwner', 'expiresAt', 'autoStartTranscription', 'hidden', 'transcribeCall', 'pipUi'));
         $room = $this->rooms[$roomName] ?? throw new RoomNotFound('No such room for this product.', 'room_not_found', 404);
         if ($room->isEnded()) {
             throw new Exceptions\VideoRequestRejected('The host has ended this call.', 'room_ended', 409);
