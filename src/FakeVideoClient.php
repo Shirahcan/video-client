@@ -141,6 +141,10 @@ class FakeVideoClient implements VideoClient
             throw new Exceptions\VideoRequestRejected('The host has ended this call.', 'room_ended', 409);
         }
 
+        if ($participantId !== null && in_array($participantId, $this->removed[$roomName] ?? [], true)) {
+            return new VideoToken('', "https://{$room->domain}.daily.co/{$roomName}", ($expiresAt ?? new \DateTimeImmutable('+2 hours'))->format(DATE_ATOM), null, true);
+        }
+
         $token = 'tok-'.substr(md5($roomName.'|'.$participantId.'|'.(int) $isOwner.'|'.(int) $hidden), 0, 16);
 
         return new VideoToken($token, "https://{$room->domain}.daily.co/{$roomName}?t={$token}", ($expiresAt ?? new \DateTimeImmutable('+2 hours'))->format(DATE_ATOM));
@@ -467,6 +471,18 @@ class FakeVideoClient implements VideoClient
             'clean_text' => $cleanText,
             'clean_generated_at' => $cleanText === null ? null : date(DATE_ATOM),
         ] + $t->toArray());
+    }
+
+    /** @var array<string, array<int, string>> room name => removed participant ids */
+    public array $removed = [];
+
+    public function removeParticipant(string $roomName, string $participantId): void
+    {
+        $this->record('removeParticipant', compact('roomName', 'participantId'));
+        if (! isset($this->rooms[$roomName])) {
+            throw new RoomNotFound('No such room for this product.', 'room_not_found', 404);
+        }
+        $this->removed[$roomName][] = $participantId;
     }
 
     public function reportJoinIssue(string $callRef, array $issue): CallJoinIssue

@@ -113,6 +113,33 @@ class ClientTest extends TestCase
         $this->assertTrue($fake->liveTranscription($room->name)->running);
     }
 
+    public function test_a_removed_participant_is_recorded_and_then_knocks(): void
+    {
+        $client = $this->client(
+            $this->json(201, ['data' => ['participant_id' => 'u-1']]),
+            $this->json(201, ['data' => ['token' => '', 'url' => 'https://shirah.daily.co/r', 'expires_at' => 'x', 'knock' => true]]),
+        );
+
+        $client->removeParticipant('r', 'u-1');
+        $token = $client->token('r', 'u-1', 'Maria', false);
+
+        $this->assertSame('api/v1/rooms/r/removals', ltrim($this->history[0]['request']->getUri()->getPath(), '/'));
+        $this->assertSame(['participant_id' => 'u-1'], json_decode((string) $this->history[0]['request']->getBody(), true));
+        $this->assertTrue($token->knock);
+        $this->assertSame('', $token->token);
+        $this->assertSame('https://shirah.daily.co/r', $token->url);
+    }
+
+    public function test_the_fake_knocks_only_the_removed_participant(): void
+    {
+        $fake = new FakeVideoClient();
+        $room = $fake->createRoom('m-1', new \DateTimeImmutable('+1 hour'), new \DateTimeImmutable('+2 hours'));
+        $fake->removeParticipant($room->name, 'u-1');
+
+        $this->assertTrue($fake->token($room->name, 'u-1', 'Maria', false)->knock);
+        $this->assertFalse($fake->token($room->name, 'u-2', 'Ana', false)->knock);
+    }
+
     public function test_a_token_may_ask_for_the_call_to_be_transcribed_whoever_joins(): void
     {
         $tokenBody = ['data' => ['token' => 'T', 'url' => 'https://shirah.daily.co/r?t=T', 'expires_at' => 'x']];

@@ -73,6 +73,12 @@ interface VideoClient
      */
     public function token(string $roomName, ?string $participantId, string $displayName, bool $isOwner, ?\DateTimeInterface $expiresAt = null, bool $autoStartTranscription = false, bool $hidden = false, bool $transcribeCall = false, ?bool $pipUi = null): VideoToken;
 
+    /**
+     * A host removed this participant from the call (the product has ejected them from Daily). From
+     * now on `token()` answers them with `knock`: the bare room, so they can only ask to join.
+     */
+    public function removeParticipant(string $roomName, string $participantId): void;
+
     /** The call-state contract (V16). No Daily call behind it: safe to poll. */
     public function state(string $roomName): VideoCallState;
 
