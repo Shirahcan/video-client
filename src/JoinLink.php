@@ -15,6 +15,9 @@ final class JoinLink
         public readonly ?string $revokedReason = null,
         public readonly ?string $supersededBy = null,
         public readonly ?\DateTimeImmutable $revokedAt = null,
+        /** A seat link's person (no account) and what they are to the call, e.g. "Interpreter" (0.28.0). */
+        public readonly ?string $seatName = null,
+        public readonly ?string $seatLabel = null,
     ) {}
 
     public static function fromArray(array $d): self
@@ -29,6 +32,8 @@ final class JoinLink
             revokedReason: $d['revoked_reason'] ?? null,
             supersededBy: $d['superseded_by'] ?? null,
             revokedAt: is_string($d['revoked_at'] ?? null) ? new \DateTimeImmutable($d['revoked_at']) : null,
+            seatName: isset($d['seat_name']) && $d['seat_name'] !== '' ? (string) $d['seat_name'] : null,
+            seatLabel: isset($d['seat_label']) && $d['seat_label'] !== '' ? (string) $d['seat_label'] : null,
         );
     }
 
@@ -38,6 +43,7 @@ final class JoinLink
             'id' => $this->id, 'call_ref' => $this->callRef, 'audience' => $this->audience, 'person' => $this->person,
             'token' => $this->token, 'active' => $this->active, 'revoked_reason' => $this->revokedReason,
             'superseded_by' => $this->supersededBy, 'revoked_at' => $this->revokedAt?->format(\DateTimeInterface::ATOM),
+            'seat_name' => $this->seatName, 'seat_label' => $this->seatLabel,
         ];
     }
 }

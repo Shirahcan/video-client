@@ -187,7 +187,7 @@ interface VideoClient
      * Make sure each audience has an active link; an existing one is kept (idempotent).
      * `per_person: true` keeps one link per (audience, person), for several invited people.
      *
-     * @param  array<int, array{audience: string, person?: ?string, per_person?: bool}>  $audiences
+     * @param  array<int, array{audience: string, person?: ?string, per_person?: bool, seat_name?: ?string, seat_label?: ?string}>  $audiences (a seat: one named person with no account, and what they are to the call)
      * @return array<int, JoinLink>
      */
     public function issueJoinLinks(string $callRef, array $audiences): array;

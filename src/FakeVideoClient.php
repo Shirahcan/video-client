@@ -517,7 +517,7 @@ class FakeVideoClient implements VideoClient
         $out = [];
         foreach ($audiences as $a) {
             $active = $this->activeLink($callRef, $a['audience'], $a);
-            $out[] = $active ?? $this->mintLink($callRef, $a['audience'], $a['person'] ?? null);
+            $out[] = $active ?? $this->mintLink($callRef, $a['audience'], $a['person'] ?? null, $a['seat_name'] ?? null, $a['seat_label'] ?? null);
         }
 
         return $out;
@@ -529,7 +529,7 @@ class FakeVideoClient implements VideoClient
         $out = [];
         foreach ($audiences as $a) {
             $old = $this->activeLink($callRef, $a['audience'], $a);
-            $new = $this->mintLink($callRef, $a['audience'], $a['person'] ?? null);
+            $new = $this->mintLink($callRef, $a['audience'], $a['person'] ?? null, $a['seat_name'] ?? $old?->seatName, $a['seat_label'] ?? $old?->seatLabel);
             if ($old !== null) {
                 $this->joinLinksById[$old->id] = JoinLink::fromArray(['active' => false, 'revoked_reason' => 'rescheduled', 'superseded_by' => $new->id, 'revoked_at' => date(DATE_ATOM)] + $old->toArray());
             }
@@ -673,11 +673,11 @@ class FakeVideoClient implements VideoClient
         return null;
     }
 
-    private function mintLink(string $callRef, string $audience, ?string $person): JoinLink
+    private function mintLink(string $callRef, string $audience, ?string $person, ?string $seatName = null, ?string $seatLabel = null): JoinLink
     {
         $id = 'jl-'.(count($this->joinLinksById) + 1);
 
-        return $this->joinLinksById[$id] = new JoinLink($id, $callRef, $audience, $person, bin2hex(random_bytes(24)));
+        return $this->joinLinksById[$id] = new JoinLink($id, $callRef, $audience, $person, bin2hex(random_bytes(24)), seatName: $seatName, seatLabel: $seatLabel);
     }
 
     public function usage(?string $month = null): VideoUsageReport

@@ -111,4 +111,20 @@ class CallRecordsTest extends TestCase
         $this->assertSame('network', $fake->joinIssues('booking-1')[0]->kind);
         $this->assertSame([], $fake->joinIssues('booking-2'));
     }
+
+    public function test_a_seat_link_carries_its_person_and_label_through_issue_and_rotate(): void
+    {
+        $fake = new \Shirahcan\VideoClient\FakeVideoClient();
+        $seat = ['audience' => 'seat', 'person' => 's-1', 'per_person' => true, 'seat_name' => 'Amara Obi', 'seat_label' => 'Interpreter'];
+        $link = $fake->issueJoinLinks('m-1', [$seat])[0];
+        $this->assertSame('Amara Obi', $link->seatName);
+        $this->assertSame('Interpreter', $link->seatLabel);
+
+        $rotated = $fake->rotateJoinLinks('m-1', [['audience' => 'seat', 'person' => 's-1', 'per_person' => true]])[0];
+        $this->assertSame('Interpreter', $rotated->seatLabel);
+
+        $round = \Shirahcan\VideoClient\JoinLink::fromArray($link->toArray());
+        $this->assertSame('Amara Obi', $round->seatName);
+        $this->assertNull(\Shirahcan\VideoClient\JoinLink::fromArray(['token' => 't'])->seatName);
+    }
 }
